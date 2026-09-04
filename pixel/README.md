@@ -40,11 +40,24 @@ pixel/
 | CSS 变量 | `--pc-<层>-<名>`,`pc` = pixel cockpit | `--pc-st-failed`、`--pc-unit-gu` |
 | CSS 类 | `pc-<组件>`,修饰用 `--`,子元素用 `__` | `pc-unit`、`pc-unit--failed`、`pc-unit__band` |
 | 角色 key | 姓氏拼音小写,短且不重 | `shen` `zhou` `gu` `mika` `help` |
-| 状态 | 全代码库只用这四个词,不许另造 | `working` `idle` `stuck` `failed` |
+| 立绘状态 | 只有这四个,对应四套姿势 | `working` `idle` `stuck` `failed` |
+| 契约状态 | 来自 MTM-275 的 `BattleState`,六个 | `fighting` `stalled` `defeated` `idle` `offline` `unknown` |
 | 部件函数 | 描述长相,不描述人名 | `hardhat`、`beret`、`dbstack` |
 
-**状态四个词是全站契约**:聚合接口、CSS 类、立绘、日志都用同一套,不要在某一层
-换成 `running`/`busy`/`error`。
+**状态名有两套,别混**:
+
+- 数据层用 MTM-275 数据契约的 `BattleState`(6 个值),那是合同,以它为准。
+- 立绘只有 4 套姿势。`sprites/index.js` 的 `toSpriteState()` 负责换算,业务代码
+  **直接把契约值传进来就行**,不用自己查表:
+
+  ```js
+  <pixel-avatar agent={a.agent_id} state={a.battle_state}></pixel-avatar>
+  ```
+
+  `offline` / `unknown` 借用空闲姿势 —— 这两个说的是「拿不到消息」,不是「角色在
+  做什么」,给它们编一个动作是骗人。区分靠卡片边框和状态灯:六种灯形状各不相同。
+- 认不出的值一律退回 `idle`,绝不返回 `undefined`。契约里明写了平台以后可能加状态,
+  指挥舱不能白屏。
 
 ## 怎么用
 
@@ -113,6 +126,8 @@ pixel/
 | `idle` 空闲 | 站直,只有呼吸起伏 | **什么都没有** | 空心□ |
 | `stuck` 卡住 | 头歪,道具垂下,全身褪色 | 大问号气泡 + 汗滴 | 三角▲,慢闪 |
 | `failed` 失败 | 上半身塌坐,道具摔在地上 | 头顶裂痕 + ✕ 眼 | 实心 + ✕ |
+| `offline` 离线 | (借用空闲) | 无 | 空框 + 斜杠,整卡打斜纹压暗 |
+| `unknown` 未知 | (借用空闲) | 无 | 空框 + 中心点 |
 
 「空闲什么标记都没有」是故意的:三个状态有标记、一个没有,扫一屏时眼睛先被有标记的抓走。
 
@@ -138,5 +153,6 @@ node pixel/tools/export-png.js --scale 6 --bg "#171d2e"
 
 - 桌面浏览器优先,不做手机端适配。
 - 二期的等级/经验/成就/战报视觉不在这里。
-- 这一层只管长什么样。数据怎么来、状态怎么判,是聚合服务那一棒的事;
-  本层只认 `working|idle|stuck|failed` 四个字符串。
+- 这一层只管长什么样。数据怎么来、状态怎么判(判定顺序见 MTM-275 的
+  `src/aggregate/battle-state.ts`),是聚合服务那一棒的事;本层只负责把契约状态
+  画出来。
