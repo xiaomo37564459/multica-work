@@ -1,0 +1,188 @@
+/* ============================================================
+   AetherLab 指挥舱 · 像素 UI 设计 Token
+   ------------------------------------------------------------
+   全站唯一的颜色/尺寸真源。业务样式一律引用 var(--xxx),
+   不许再写死十六进制色值 —— 换肤靠切 data-theme,不靠改代码。
+
+   用法:
+     <html data-theme="deep-space">   默认
+     <html data-theme="dusk-forge">
+     <html data-theme="tactical-board">
+
+   语义分三层:
+     1. 底座层 --pc-bg-* / --pc-line-* / --pc-text-*   随主题变
+     2. 状态层 --pc-st-*                               四态语义色,跨主题同义
+     3. 阵营层 --pc-unit-*                             13 个角色的身份色
+   ============================================================ */
+
+:root {
+  /* --- 像素网格:全站尺寸必须是 --pc-u 的整数倍,否则会出现半像素糊边 --- */
+  --pc-u: 4px;              /* 基本像素单位 */
+  --pc-u2: 8px;
+  --pc-u3: 12px;
+  --pc-u4: 16px;
+  --pc-u6: 24px;
+  --pc-u8: 32px;
+  --pc-u12: 48px;
+
+  /* --- 立绘 --- */
+  --pc-sprite-grid: 32;     /* 每个精灵的逻辑边长(格) */
+  --pc-sprite-scale: 4;     /* 放大倍数 → 128px。任何元素上都能就地覆盖 */
+  /* 注意:不要再定义一个 --pc-sprite-size: calc(... var(--pc-sprite-scale) ...)。
+     自定义属性里的 var() 在「声明它的那个元素」上就被替换死了,子元素改
+     --pc-sprite-scale 也不会让它重算。所以尺寸一律在用的地方现算:
+       calc(var(--pc-sprite-grid) * var(--pc-sprite-scale) * 1px) */
+
+  /* --- 描边:像素风的骨架,一律 2px 实线,不用圆角 --- */
+  --pc-border: 2px;
+  --pc-radius: 0;
+
+  /* --- 字体 ---
+     不外挂 webfont:这是本机离线工具,不该为了字形去连 CDN。
+     像素观感由精灵/描边/网格承担;文字只要求「点阵感 + 中文不糊」。
+     想要全像素中文字形,见 pixel/README.md「字体升级」一节,加一段
+     @font-face 即可,布局不依赖它。 */
+  --pc-font: "Zpix", "Fusion Pixel 12", "Ark Pixel 12px", "Silkscreen",
+             "Sarasa Mono SC", "Cascadia Mono", Consolas,
+             "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", monospace;
+  --pc-fs-xs: 11px;   --pc-lh-xs: 16px;   /* 角标、单位 */
+  --pc-fs-sm: 12px;   --pc-lh-sm: 20px;   /* 正文次要 */
+  --pc-fs-md: 14px;   --pc-lh-md: 24px;   /* 正文 */
+  --pc-fs-lg: 18px;   --pc-lh-lg: 28px;   /* 卡片标题 */
+  --pc-fs-xl: 24px;   --pc-lh-xl: 32px;   /* 区块标题 */
+  --pc-fs-2xl: 32px;  --pc-lh-2xl: 40px;  /* 页面主标题 */
+  --pc-tracking: 0.05em;
+
+  /* --- 动效:像素风只用离散步进,不用平滑缓动 --- */
+  --pc-step: steps(2, end);
+  --pc-beat: 800ms;         /* 呼吸/闪烁一拍 */
+  --pc-beat-fast: 400ms;
+
+  /* --- 层级 --- */
+  --pc-z-grid: 0;
+  --pc-z-card: 10;
+  --pc-z-pop: 100;
+  --pc-z-toast: 1000;
+}
+
+/* ============================================================
+   状态四态 —— 全站语义唯一。任何主题下含义不变,只调明度保证对比度。
+   工作中 working / 空闲 idle / 卡住 stuck / 失败 failed
+   ============================================================ */
+
+/* ---------- 主题 A:深空指挥舱 ---------- */
+:root,
+[data-theme="deep-space"] {
+  --pc-theme-name: "深空指挥舱";
+
+  --pc-bg-0: #080a12;       /* 页面底 */
+  --pc-bg-1: #0f1320;       /* 面板 */
+  --pc-bg-2: #171d2e;       /* 卡片 */
+  --pc-bg-3: #212940;       /* 卡片内凸起/表头 */
+  --pc-bg-sunken: #05070d;  /* 凹槽:进度条底、代码块 */
+
+  --pc-line: #2b3450;
+  --pc-line-strong: #46547f;
+
+  --pc-text-hi: #e9eeff;
+  --pc-text: #a3b0d2;
+  --pc-text-dim: #6a7699;
+  --pc-text-on-accent: #04121a;
+
+  --pc-accent: #3fe0c8;     /* 主强调:磷光青 */
+  --pc-accent-dim: #1d7f74;
+  --pc-accent-2: #ffb648;   /* 次强调:琥珀 */
+
+  --pc-st-working: #35dfc0;
+  --pc-st-idle: #5d6b93;
+  --pc-st-stuck: #ffb020;
+  --pc-st-failed: #ff4f62;
+
+  --pc-scanline: rgba(255, 255, 255, 0.028);
+  --pc-glow: 0 0 0 2px rgba(63, 224, 200, 0.18), 0 0 16px rgba(63, 224, 200, 0.22);
+  --pc-shadow: 0 4px 0 0 #05070d;
+}
+
+/* ---------- 主题 B:黄昏工坊 ---------- */
+[data-theme="dusk-forge"] {
+  --pc-theme-name: "黄昏工坊";
+
+  --pc-bg-0: #150f16;
+  --pc-bg-1: #1f161f;
+  --pc-bg-2: #2b1f2b;
+  --pc-bg-3: #392a37;
+  --pc-bg-sunken: #0e090f;
+
+  --pc-line: #4a3646;
+  --pc-line-strong: #745567;
+
+  --pc-text-hi: #fbeee1;
+  --pc-text: #cfae9f;
+  --pc-text-dim: #927169;
+  --pc-text-on-accent: #241206;
+
+  --pc-accent: #f0a860;
+  --pc-accent-dim: #8f5c2e;
+  --pc-accent-2: #7fd4a8;
+
+  --pc-st-working: #74d6a2;
+  --pc-st-idle: #8d7a80;
+  --pc-st-stuck: #f0a52c;
+  --pc-st-failed: #e3564e;
+
+  --pc-scanline: rgba(255, 220, 180, 0.03);
+  --pc-glow: 0 0 0 2px rgba(240, 168, 96, 0.2), 0 0 16px rgba(240, 168, 96, 0.24);
+  --pc-shadow: 0 4px 0 0 #0e090f;
+}
+
+/* ---------- 主题 C:战术沙盘 ---------- */
+[data-theme="tactical-board"] {
+  --pc-theme-name: "战术沙盘";
+
+  --pc-bg-0: #b9c0b4;
+  --pc-bg-1: #ccd2c6;
+  --pc-bg-2: #e4e8dd;
+  --pc-bg-3: #f4f6ee;
+  --pc-bg-sunken: #a3ab9d;
+
+  --pc-line: #7c877a;
+  --pc-line-strong: #2e3a33;
+
+  --pc-text-hi: #17211c;
+  --pc-text: #3a463f;
+  --pc-text-dim: #6d7a71;
+  --pc-text-on-accent: #f4f6ee;
+
+  --pc-accent: #1f6f5c;
+  --pc-accent-dim: #9ab3aa;
+  --pc-accent-2: #b8481a;
+
+  --pc-st-working: #14805f;
+  --pc-st-idle: #6d7a71;
+  --pc-st-stuck: #a86a00;
+  --pc-st-failed: #b3302b;
+
+  --pc-scanline: rgba(0, 0, 0, 0.022);
+  --pc-glow: 0 0 0 2px rgba(31, 111, 92, 0.24);
+  --pc-shadow: 0 4px 0 0 #7c877a;
+}
+
+/* ============================================================
+   阵营色 —— 13 个角色的身份色,跨主题不变(身份不该随皮肤漂移)。
+   同时被立绘配色和角色卡边条引用,确保「卡片颜色 = 立绘颜色」。
+   ============================================================ */
+:root {
+  --pc-unit-shen: #8b5cf6;   /* 沈执｜总指挥   紫 */
+  --pc-unit-ce:   #f2913d;   /* 策衡｜产品官   橘 */
+  --pc-unit-lin:  #6f97b0;   /* 林澄｜需求官   青灰 */
+  --pc-unit-zhou: #4f7fe0;   /* 周构｜架构师   靛蓝 */
+  --pc-unit-han:  #d9a520;   /* 韩程｜后端     蜂蜜黄 */
+  --pc-unit-xu:   #38b8d8;   /* 许界｜前端     天青 */
+  --pc-unit-su:   #e35fa8;   /* 苏绘｜UI/UX    品红 */
+  --pc-unit-tang: #b5713f;   /* 唐端｜移动端   棕 */
+  --pc-unit-gu:   #2e7fa8;   /* 顾检｜质量官   深海蓝 */
+  --pc-unit-liang:#e8762c;   /* 梁运｜运维     工程橙 */
+  --pc-unit-qin:  #3f9e63;   /* 秦划｜项目经理 森绿 */
+  --pc-unit-mika: #f0a3d8;   /* Mika           粉紫 */
+  --pc-unit-help: #a8b2c4;   /* Multica Helper 银灰 */
+}
