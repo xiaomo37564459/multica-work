@@ -1,0 +1,6 @@
+{
+  "//": "只为把 pixel/ 下的 .js 标成 ES 模块。放在这里而不是仓库根,是为了不跟主干骨架的 package.json 打架。",
+  "name": "aetherlab-pixel",
+  "private": true,
+  "type": "module"
+}
