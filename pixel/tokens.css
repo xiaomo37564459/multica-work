@@ -66,8 +66,12 @@
 }
 
 /* ============================================================
-   状态四态 —— 全站语义唯一。任何主题下含义不变,只调明度保证对比度。
-   工作中 working / 空闲 idle / 卡住 stuck / 失败 failed
+   状态色 —— 全站语义唯一。任何主题下含义不变,只调明度保证对比度。
+
+   前四个对应立绘的四套姿势;offline / unknown 没有专属姿势(它们说的是
+   「拿不到消息」,不是「角色在做什么」),只有卡片边框和状态灯不同。
+   名字和 MTM-275 的数据契约 BattleState 一一对得上,映射表见
+   pixel/sprites/index.js 的 STATE_FROM_CONTRACT。
    ============================================================ */
 
 /* ---------- 主题 A:深空指挥舱 ---------- */
@@ -97,6 +101,8 @@
   --pc-st-idle: #5d6b93;
   --pc-st-stuck: #ffb020;
   --pc-st-failed: #ff4f62;
+  --pc-st-offline: #3a4258;
+  --pc-st-unknown: #7b6ea8;
 
   --pc-scanline: rgba(255, 255, 255, 0.028);
   --pc-glow: 0 0 0 2px rgba(63, 224, 200, 0.18), 0 0 16px rgba(63, 224, 200, 0.22);
@@ -129,6 +135,8 @@
   --pc-st-idle: #8d7a80;
   --pc-st-stuck: #f0a52c;
   --pc-st-failed: #e3564e;
+  --pc-st-offline: #574549;
+  --pc-st-unknown: #96829e;
 
   --pc-scanline: rgba(255, 220, 180, 0.03);
   --pc-glow: 0 0 0 2px rgba(240, 168, 96, 0.2), 0 0 16px rgba(240, 168, 96, 0.24);
@@ -161,6 +169,8 @@
   --pc-st-idle: #6d7a71;
   --pc-st-stuck: #a86a00;
   --pc-st-failed: #b3302b;
+  --pc-st-offline: #8a938b;
+  --pc-st-unknown: #6b5f7d;
 
   --pc-scanline: rgba(0, 0, 0, 0.022);
   --pc-glow: 0 0 0 2px rgba(31, 111, 92, 0.24);

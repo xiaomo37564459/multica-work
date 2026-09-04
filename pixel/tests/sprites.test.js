@@ -13,11 +13,15 @@ import { fileURLToPath } from 'node:url';
 
 import { ROSTER, unitColors } from '../sprites/roster.js';
 import { HEADS, OUTFITS, PROPS } from '../sprites/parts.js';
-import { drawSprite, STATES, FRAMES } from '../sprites/renderer.js';
+import { drawSprite, STATES, FRAMES, STATE_FROM_CONTRACT, toSpriteState } from '../sprites/renderer.js';
 import { INK, ramp, despair, drained } from '../sprites/palette.js';
 import { G } from '../sprites/body.js';
 
 const TOKENS = readFileSync(fileURLToPath(new URL('../tokens.css', import.meta.url)), 'utf8');
+const COMPONENTS = readFileSync(fileURLToPath(new URL('../components.css', import.meta.url)), 'utf8');
+
+/** MTM-275 数据契约里的 BattleState。改契约就得同步改这里,测试会挡住。 */
+const CONTRACT_STATES = ['fighting', 'stalled', 'defeated', 'idle', 'offline', 'unknown'];
 
 const cells = (g) => g.d.filter(Boolean).length;
 const signature = (g) => g.d.map((c) => c || '.').join('|');
@@ -203,9 +207,32 @@ test('三套主题都定义了完整的四个状态色', () => {
   }
 });
 
-test('同一个状态色在一套主题里只定义一次 —— 重复定义会静默盖掉前一个', () => {
-  for (const st of ['working', 'idle', 'stuck', 'failed']) {
+/* ---------------- 与数据契约对齐 ----------------
+   契约在 MTM-275 的 src/contract/types.ts。它有 6 个状态,立绘只有 4 套姿势,
+   中间这层映射一旦漏一个,前端就会拿到 undefined 然后白屏。 */
+
+test('契约里的 6 个状态每一个都能映射到立绘状态', () => {
+  for (const st of CONTRACT_STATES) {
+    assert.ok(STATES.includes(toSpriteState(st)), `契约状态 ${st} 映射不出立绘状态`);
+  }
+  assert.deepEqual(Object.keys(STATE_FROM_CONTRACT).sort(), [...CONTRACT_STATES].sort());
+});
+
+test('没见过的状态一律退回空闲,绝不返回 undefined', () => {
+  for (const junk of ['', null, undefined, 'RUNNING', '打怪中', 42]) {
+    assert.equal(toSpriteState(junk), 'idle', `${String(junk)} 没有安全兜底`);
+  }
+});
+
+test('立绘自己的四个状态名传进来也认(本地写假数据时不用先查表)', () => {
+  for (const st of STATES) assert.equal(toSpriteState(st), st);
+});
+
+test('契约 6 态都有对应的状态灯样式和状态色,不然会渲染成没有样式的空盒子', () => {
+  const lamps = ['working', 'idle', 'stuck', 'failed', 'offline', 'unknown'];
+  for (const st of lamps) {
+    assert.match(COMPONENTS, new RegExp(`\\.pc-lamp--${st}\\b`), `components.css 缺 .pc-lamp--${st}`);
     const hits = TOKENS.match(new RegExp(`--pc-st-${st}\\s*:`, 'g')) || [];
-    assert.equal(hits.length, 3, `--pc-st-${st} 出现了 ${hits.length} 次,应该正好 3 次(三套主题各一次)`);
+    assert.equal(hits.length, 3, `--pc-st-${st} 应该三套主题各定义一次,实际 ${hits.length} 次`);
   }
 });

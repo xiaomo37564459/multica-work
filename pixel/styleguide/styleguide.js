@@ -21,7 +21,11 @@ const avatar = (key, state, scale, animate = true) => {
   return a;
 };
 
-const STATE_CN = { working: '交战中', idle: '待命', stuck: '卡住', failed: '失败' };
+const STATE_CN = { working: '交战中', idle: '待命', stuck: '卡住', failed: '失败',
+                   offline: '离线', unknown: '状态未知' };
+// 契约(MTM-275 BattleState)有 6 个状态,立绘只有 4 套姿势 ——
+// offline / unknown 借用空闲姿势,靠边框和状态灯区分。
+const ALL_LAMPS = [...STATES, 'offline', 'unknown'];
 
 /* ---------------- 换主题 ---------------- */
 
@@ -51,7 +55,7 @@ const DECK = [
   { key: 'liang', state: 'idle', quest: null, mins: 0, retry: 0, lv: 0 },
   { key: 'qin', state: 'idle', quest: null, mins: 0, retry: 0, lv: 0 },
   { key: 'mika', state: 'idle', quest: null, mins: 0, retry: 0, lv: 0 },
-  { key: 'help', state: 'idle', quest: null, mins: 0, retry: 0, lv: 0 },
+  { key: 'help', state: 'offline', quest: null, mins: 0, retry: 0, lv: 0 },
 ];
 
 function levelPips(lv, urgent, label = '怪物等级') {
@@ -159,7 +163,7 @@ function buildSwatches() {
 
 function buildBits() {
   const lamps = $('#lamps');
-  STATES.forEach((s) => {
+  ALL_LAMPS.forEach((s) => {
     const w = el('span', 'sg-row');
     w.style.gap = '8px';
     w.append(el('span', `pc-lamp pc-lamp--${s}`), el('span', 'sg-label', STATE_CN[s]));
@@ -167,7 +171,7 @@ function buildBits() {
   });
 
   const chips = $('#chips');
-  STATES.forEach((s) => {
+  ALL_LAMPS.forEach((s) => {
     const c = el('span', `pc-status pc-status--${s}`);
     c.append(el('span', `pc-lamp pc-lamp--${s}`), document.createTextNode(STATE_CN[s]));
     chips.append(c);

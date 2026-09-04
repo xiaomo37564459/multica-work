@@ -232,6 +232,16 @@
     linear-gradient(-45deg, transparent 42%, #fff 42% 58%, transparent 58%);
 }
 
+/* 离线:空框 + 一道斜杠,像「信号被划掉」 */
+.pc-lamp--offline { --pc-lamp-c: var(--pc-st-offline); }
+.pc-lamp--offline::after {
+  inset: 0;
+  background: linear-gradient(-45deg, transparent 44%, var(--pc-lamp-c) 44% 56%, transparent 56%);
+}
+/* 状态未知:空框 + 中心一点。契约说平台以后可能加状态,前端必须渲染得出来,不能白屏 */
+.pc-lamp--unknown { --pc-lamp-c: var(--pc-st-unknown); }
+.pc-lamp--unknown::after { inset: 5px; background: var(--pc-lamp-c); }
+
 @keyframes pc-pulse { 0% { opacity: 1; } 50% { opacity: 0.45; } 100% { opacity: 1; } }
 @keyframes pc-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.25; } }
 
@@ -251,6 +261,8 @@
 .pc-status--idle { color: var(--pc-st-idle); }
 .pc-status--stuck { color: var(--pc-st-stuck); }
 .pc-status--failed { color: var(--pc-st-failed); }
+.pc-status--offline { color: var(--pc-st-offline); }
+.pc-status--unknown { color: var(--pc-st-unknown); }
 
 /* ---------------- 进度条 ----------------
    分段填充,不用平滑渐变 —— 一格一格地长,才是像素风的血条。 */
@@ -393,6 +405,13 @@
 .pc-unit--stuck { border-color: var(--pc-st-stuck); }
 .pc-unit--failed { border-color: var(--pc-st-failed); }
 .pc-unit--idle { opacity: 0.82; }
+/* 离线:整张卡压暗并打斜纹 —— 「这张卡上的信息现在不可信」 */
+.pc-unit--offline {
+  border-color: var(--pc-st-offline);
+  opacity: 0.55;
+  background-image: repeating-linear-gradient(45deg, transparent 0 5px, var(--pc-line) 5px 6px);
+}
+.pc-unit--unknown { border-color: var(--pc-st-unknown); opacity: 0.75; }
 
 /* ---------------- 怪物等级(= issue 优先级) ---------------- */
 

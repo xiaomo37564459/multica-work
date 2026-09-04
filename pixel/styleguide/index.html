@@ -34,7 +34,7 @@
     <div class="pc-frame pc-panel sg-deck">
       <div class="sg-deck__bar">
         <span class="pc-hi">出战名册</span>
-        <span class="pc-dim sg-label">13 名 · <span class="pc-num">4</span> 人交战中 · <span class="pc-num">1</span> 人卡住 · <span class="pc-num">1</span> 人阵亡</span>
+        <span class="pc-dim sg-label">13 名 · <span class="pc-num">4</span> 人交战中 · <span class="pc-num">1</span> 人卡住 · <span class="pc-num">1</span> 人阵亡 · <span class="pc-num">1</span> 人离线</span>
         <span class="sg-spacer"></span>
         <button class="pc-btn pc-btn--sm">刷新</button>
         <button class="pc-btn pc-btn--sm pc-btn--primary">派活</button>
@@ -108,7 +108,11 @@
         <h3>状态灯 · 状态胶囊</h3>
         <div class="sg-row" id="lamps"></div>
         <div class="sg-row" id="chips"></div>
-        <p class="pc-dim sg-label">实心带亮点=干活,空框=空闲,三角=卡住,✕=失败。</p>
+        <p class="pc-dim sg-label">
+          实心带亮点=干活,空框=空闲,三角=卡住,✕=失败,斜杠=离线,中心点=状态未知。<br>
+          后两个没有专属立绘姿势(它们说的是「拿不到消息」,不是角色在做什么),
+          名字和 MTM-275 数据契约的 <code>BattleState</code> 一一对应。
+        </p>
       </div>
     </div>
 

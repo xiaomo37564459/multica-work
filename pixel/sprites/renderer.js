@@ -17,6 +17,31 @@ import { unitColors } from './roster.js';
 export const STATES = ['working', 'idle', 'stuck', 'failed'];
 export const FRAMES = 2;
 
+/**
+ * 数据契约(MTM-275 的 BattleState)→ 立绘状态 的映射。
+ *
+ * 契约有 6 个状态,立绘只画了 4 套姿势 —— offline 和 unknown 借用空闲的姿势,
+ * 靠卡片边框和状态灯区分。这样做的理由:这两个状态说的是「拿不到消息」,
+ * 不是「角色在做什么」,给它们编一个动作反而是在骗人。
+ *
+ * 传 4 个立绘状态名进来也认,所以本地写死假数据时不用先查表。
+ */
+export const STATE_FROM_CONTRACT = {
+  fighting: 'working',
+  stalled: 'stuck',
+  defeated: 'failed',
+  idle: 'idle',
+  offline: 'idle',
+  unknown: 'idle',
+};
+
+/** 归一成立绘用的四个状态名;不认识的一律当空闲,绝不白屏 */
+export function toSpriteState(state) {
+  if (STATES.includes(state)) return state;
+  return STATE_FROM_CONTRACT[state] || 'idle';
+}
+
+
 /** 姿势表:每个状态两帧。h=头 t=躯干 al/ar=左右手臂 dx=水平偏移 */
 const POSE = {
   idle: [

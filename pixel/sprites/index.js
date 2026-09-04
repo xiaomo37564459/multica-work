@@ -16,10 +16,10 @@
  * 后者更省事:聚合接口给什么就填什么,不用在业务代码里做映射。
  */
 import { ROSTER, byKey, byAgentId } from './roster.js';
-import { buildSheet, cellOffset, STATES, FRAMES, drawSprite } from './renderer.js';
+import { buildSheet, cellOffset, STATES, FRAMES, drawSprite, STATE_FROM_CONTRACT, toSpriteState } from './renderer.js';
 import { G } from './body.js';
 
-export { ROSTER, byKey, byAgentId, STATES, FRAMES, drawSprite, cellOffset };
+export { ROSTER, byKey, byAgentId, STATES, FRAMES, drawSprite, cellOffset, STATE_FROM_CONTRACT, toSpriteState };
 
 let sheet = null;
 
@@ -44,7 +44,7 @@ export function resolve(idOrKey) {
 export function applySprite(el, idOrKey, state = 'idle', opts = {}) {
   const c = resolve(idOrKey);
   if (!c) { el.dataset.pcMissing = idOrKey; return false; }
-  const st = STATES.includes(state) ? state : 'idle';
+  const st = toSpriteState(state);
   const sh = getSheet();
   const { animate = true, frame = 0 } = opts;
 
@@ -86,7 +86,10 @@ export function spriteCanvas(idOrKey, state = 'idle', scale = 4, frame = 0) {
 
 /* ---------------- <pixel-avatar> ---------------- */
 
-class PixelAvatar extends HTMLElement {
+// 在 Node 里 import 本文件不该炸(测试、SSR 都可能这么干),所以整段守起来
+const HAS_DOM = typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined';
+
+class PixelAvatar extends (HAS_DOM ? HTMLElement : class {}) {
   static observedAttributes = ['agent', 'state', 'scale', 'animate'];
 
   connectedCallback() { this.#render(); }
@@ -102,12 +105,17 @@ class PixelAvatar extends HTMLElement {
     applySprite(this, agent, state, { animate });
     // 无障碍:立绘是纯背景图,读屏器需要一句人话
     const c = resolve(agent);
-    const label = { working: '战斗中', idle: '待命', stuck: '卡住', failed: '失败' }[state] || state;
+    const label = {
+      working: '战斗中', fighting: '战斗中',
+      idle: '待命', stuck: '卡住', stalled: '卡住',
+      failed: '失败', defeated: '失败',
+      offline: '离线', unknown: '状态未知',
+    }[state] || state;
     this.setAttribute('role', 'img');
     this.setAttribute('aria-label', c ? `${c.name}（${c.title}），${label}` : `未知角色 ${agent}`);
   }
 }
 
-if (typeof customElements !== 'undefined' && !customElements.get('pixel-avatar')) {
+if (HAS_DOM && !customElements.get('pixel-avatar')) {
   customElements.define('pixel-avatar', PixelAvatar);
 }
