@@ -1,0 +1,20 @@
+{
+  "name": "aetherlab-cockpit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AetherLab 指挥舱 —— 本机运行的智能体工作中心(BFF 骨架)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "start": "node src/server/index.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
