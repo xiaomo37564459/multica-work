@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="deep-space">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AetherLab 指挥舱 · 像素皮肤样张</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../components.css">
+<link rel="stylesheet" href="styleguide.css">
+</head>
+<body class="pc-root pc-scan">
+
+<header class="sg-top">
+  <div class="sg-top__title">
+    <h1>AetherLab 指挥舱 · 像素皮肤</h1>
+    <p class="pc-dim">13 个角色 × 4 个状态 + 一整套像素 UI 组件。下面每一样都是仓库里能跑的代码,不是效果图。</p>
+  </div>
+  <div class="sg-top__themes">
+    <span class="pc-dim sg-label">换一套看看:</span>
+    <button class="pc-btn pc-btn--sm" data-theme-btn="deep-space">A 深空指挥舱</button>
+    <button class="pc-btn pc-btn--sm" data-theme-btn="dusk-forge">B 黄昏工坊</button>
+    <button class="pc-btn pc-btn--sm" data-theme-btn="tactical-board">C 战术沙盘</button>
+  </div>
+</header>
+
+<main class="sg-main">
+
+  <!-- ============ 主视图样张 ============ -->
+  <section class="sg-sec">
+    <div class="sg-sec__head">
+      <h2>① 指挥舱主视图长这样</h2>
+      <p class="pc-dim">早上打开就是这一屏。谁在打怪、打哪只、打了多久、失败几次 —— 不用读字,扫一眼边框颜色就知道。</p>
+    </div>
+    <div class="pc-frame pc-panel sg-deck">
+      <div class="sg-deck__bar">
+        <span class="pc-hi">出战名册</span>
+        <span class="pc-dim sg-label">13 名 · <span class="pc-num">4</span> 人交战中 · <span class="pc-num">1</span> 人卡住 · <span class="pc-num">1</span> 人阵亡</span>
+        <span class="sg-spacer"></span>
+        <button class="pc-btn pc-btn--sm">刷新</button>
+        <button class="pc-btn pc-btn--sm pc-btn--primary">派活</button>
+      </div>
+      <div class="sg-deck__grid" id="deck"></div>
+    </div>
+  </section>
+
+  <!-- ============ 立绘总表 ============ -->
+  <section class="sg-sec">
+    <div class="sg-sec__head">
+      <h2>② 13 个角色 × 4 个状态</h2>
+      <p class="pc-dim">
+        四个状态不靠文字也分得清:<b class="pc-hi">干活</b>举着家伙砸、火花四溅 →
+        <b class="pc-hi">空闲</b>站着不动、什么标记都没有 →
+        <b class="pc-hi">卡住</b>头顶冒问号、颜色发灰 →
+        <b class="pc-hi">失败</b>整个人塌下去、✕ 眼、家伙掉一地。
+      </p>
+    </div>
+    <div class="pc-frame pc-panel sg-roster" id="roster"></div>
+  </section>
+
+  <!-- ============ 颜色 ============ -->
+  <section class="sg-sec">
+    <div class="sg-sec__head">
+      <h2>③ 颜色</h2>
+      <p class="pc-dim">底座色随主题变;状态色和身份色跨主题不变 —— 换皮肤不该让「红色 = 失败」也跟着变。</p>
+    </div>
+    <div class="sg-cols">
+      <div class="pc-frame pc-panel sg-pad">
+        <h3>状态四色</h3>
+        <div class="sg-swatches" id="sw-state"></div>
+      </div>
+      <div class="pc-frame pc-panel sg-pad">
+        <h3>底座</h3>
+        <div class="sg-swatches" id="sw-base"></div>
+      </div>
+    </div>
+    <div class="pc-frame pc-panel sg-pad">
+      <h3>13 个身份色</h3>
+      <p class="pc-dim sg-label">卡片顶条的颜色 = 立绘身上衣服的颜色。看到紫色就知道是沈执,不用等文字读完。</p>
+      <div class="sg-swatches" id="sw-unit"></div>
+    </div>
+  </section>
+
+  <!-- ============ 组件 ============ -->
+  <section class="sg-sec">
+    <div class="sg-sec__head">
+      <h2>④ 组件</h2>
+      <p class="pc-dim">按钮按下去会真的沉 4 像素;进度条一格一格地长;状态灯除了颜色不同,形状也不同(截图变灰、色觉障碍时照样分得清)。</p>
+    </div>
+
+    <div class="sg-cols">
+      <div class="pc-frame pc-panel sg-pad">
+        <h3>按钮</h3>
+        <div class="sg-row">
+          <button class="pc-btn pc-btn--primary">派 活</button>
+          <button class="pc-btn">喊 话</button>
+          <button class="pc-btn pc-btn--ghost">跳回 Multica</button>
+          <button class="pc-btn pc-btn--danger">中止任务</button>
+          <button class="pc-btn" disabled>已出战</button>
+        </div>
+        <div class="sg-row">
+          <button class="pc-btn pc-btn--sm pc-btn--primary">小号</button>
+          <button class="pc-btn pc-btn--sm">小号</button>
+          <button class="pc-btn pc-btn--sm" disabled>小号禁用</button>
+        </div>
+      </div>
+
+      <div class="pc-frame pc-panel sg-pad">
+        <h3>状态灯 · 状态胶囊</h3>
+        <div class="sg-row" id="lamps"></div>
+        <div class="sg-row" id="chips"></div>
+        <p class="pc-dim sg-label">实心带亮点=干活,空框=空闲,三角=卡住,✕=失败。</p>
+      </div>
+    </div>
+
+    <div class="sg-cols">
+      <div class="pc-frame pc-panel sg-pad">
+        <h3>进度条</h3>
+        <div class="sg-stack">
+          <div><span class="pc-dim sg-label">交战中 · 已耗时 12 分钟</span>
+            <div class="pc-bar"><div class="pc-bar__fill" style="--pc-bar-v:68"></div></div></div>
+          <div><span class="pc-dim sg-label">卡住 · 8 分钟没动静</span>
+            <div class="pc-bar pc-bar--stuck"><div class="pc-bar__fill" style="--pc-bar-v:41"></div></div></div>
+          <div><span class="pc-dim sg-label">失败 · 已重试 2 次</span>
+            <div class="pc-bar pc-bar--failed"><div class="pc-bar__fill" style="--pc-bar-v:23"></div></div></div>
+          <div><span class="pc-dim sg-label">还在拉数据(时长未知)</span>
+            <div class="pc-bar pc-bar--indeterminate"><div class="pc-bar__fill"></div></div></div>
+        </div>
+      </div>
+
+      <div class="pc-frame pc-panel sg-pad">
+        <h3>输入 · 怪物等级 · 技能装备栏</h3>
+        <div class="sg-stack">
+          <input class="pc-input" placeholder="写一句目标,回车派活…">
+          <textarea class="pc-textarea" placeholder="给交战中的角色喊一句话…"></textarea>
+          <div class="sg-row" id="levels"></div>
+          <div class="pc-slots">
+            <span class="pc-slot">技 git-workflow</span>
+            <span class="pc-slot">技 design-taste-frontend</span>
+            <span class="pc-slot">装 playwright</span>
+            <span class="pc-slot pc-slot--empty">空槽</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 战役地图 ============ -->
+  <section class="sg-sec">
+    <div class="sg-sec__head">
+      <h2>⑤ 战役地图(关卡节点)</h2>
+      <p class="pc-dim">一个项目一张图。按 stage 分层,做完的点亮、正在打的挂着出击角色的头、还没轮到的打斜纹锁住。</p>
+    </div>
+    <div class="pc-frame pc-panel sg-pad sg-map" id="map"></div>
+  </section>
+
+  <!-- ============ 战斗回放 ============ -->
+  <section class="sg-sec">
+    <div class="sg-sec__head">
+      <h2>⑥ 战斗回放(接力时间轴)</h2>
+      <p class="pc-dim">一个任务传了几棒、谁传给谁、每一棒交了什么 —— 顺着往下读就是全过程。</p>
+    </div>
+    <div class="pc-frame pc-panel sg-pad">
+      <div class="pc-timeline" id="timeline"></div>
+    </div>
+  </section>
+
+  <!-- ============ 关键状态 ============ -->
+  <section class="sg-sec">
+    <div class="sg-sec__head">
+      <h2>⑦ 关键状态全覆盖</h2>
+      <p class="pc-dim">主流程之外这七种也都画了,后面写代码的人不用自己现编。</p>
+    </div>
+    <div class="sg-states" id="states"></div>
+  </section>
+
+</main>
+
+<footer class="sg-foot pc-dim">
+  <span>tokens.css / components.css / sprites 全部在 <code>pixel/</code> 下。加新角色只改 <code>pixel/sprites/roster.js</code> 一个文件。</span>
+</footer>
+
+<script type="module" src="styleguide.js"></script>
+</body>
+</html>
