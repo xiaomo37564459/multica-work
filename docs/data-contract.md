@@ -93,10 +93,10 @@
   4. **「卡住」计数不含 `waiting`**(`ALARM_STATES` 只有 `defeated` / `stalled`)。
      界面一期不加第五张立绘:待接力 = 空闲立绘 + 一个角标。
 
-  **数据从哪来(给 MTM-278 的实现说明)**:按 `parent_issue_id` 在内存里过滤,
-  **不加任何平台调用**。数据源要取**热档 `issue_active` ∪ 冷档 `issue_all`** ——
-  冷档(300s)才有 todo / in_review 的子任务,热档(3s)保证 in_progress / blocked 的状态是新的;
-  同一条 issue 按 id 去重、以热档为准。**只喂热档会漏**:子任务处在 in_review 的指挥官照样被误判成卡住。
+  **数据从哪来**:按 `parent_issue_id` 在内存里过滤,**不加任何平台调用**。
+  数据源是**热档 `issue_active` ∪ 冷档 `issue_all`** —— 冷档(300s)才有 todo / in_review 的子任务,
+  热档(3s)保证 in_progress / blocked 的状态是新的;同一条 issue 按 id 去重、以热档为准。
+  只喂热档的话,子任务处在 in_review 的指挥官会被误判成卡住。
 
 - **`runtime_status` 是 `unknown` 时不判 `offline`。** 查不到 runtime 比确认离线弱得多,
   不能因为一次数据缺失就把全员点灰。
@@ -106,13 +106,8 @@
 每张卡都带一个 `state_reason`(中文一句话,例「最近一战失败,等第 2 次重试(agent_error.unknown)」)。
 **界面做 tooltip,验收时对着它核规则。**
 
-> **`waiting` 目前是「枚举已定、实现待填」** —— 和那些返回 501 的接口一个道理。
-> 本 PR 只落契约层(枚举值、`countStates` 的键、`STATE_DISPLAY_ORDER` 里的位置),
-> `decideBattleState` 暂时还不会返回它,持有父 issue 的人仍旧报 `stalled`。
->
-> **规则实现归 MTM-278(韩程)**:得给判定喂子 issue 数据,而 `todo` / `in_review` 的子任务
-> 不在热档 `issue_active` 里,要等冷档 `issue_all` 接进聚合层 —— 那本来就是那一棒的活。
-> 上面这几条规则是可以照着写的完整定义,不用再回来问。
+> `waiting` 是 2026-09-04 由策衡拍板加进枚举的第七种状态,规则与实现都已落在本 PR 里,
+> 单测见 `test/battle-state.test.ts`「派单的人 vs 躺活的人」一节和 `test/roster.test.ts` 末尾三条。
 
 ### 一张角色卡长这样
 

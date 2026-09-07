@@ -90,6 +90,7 @@ function handleRoster(res: ServerResponse): void {
     runtimes: poller.runtimes.snapshot().value ?? [],
     tasksByAgent: poller.tasksByAgent(),
     activeIssues: poller.activeIssues.snapshot().value ?? [],
+    allIssues: poller.allIssues.snapshot().value ?? [],
     cfg: deepLinks,
     now: new Date().toISOString(),
   });
@@ -134,7 +135,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     fail(res, 403, 'forbidden', 'Host 头不是本机地址,拒绝');
     return;
   }
-  if (!isAllowedOrigin(req.headers.origin, cfg.port)) {
+  if (!isAllowedOrigin(req.headers.origin, cfg.port, cfg.devOriginPorts)) {
     fail(res, 403, 'forbidden', 'Origin 不是本机,拒绝');
     return;
   }

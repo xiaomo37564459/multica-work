@@ -47,7 +47,14 @@ heory 浏览器里打开 `evil.com` 的页面,页面里的 JS 就能同源访问
 **挡的是什么**:heory 浏览器里随便开着的某个网页,用 JS 打 `http://127.0.0.1:4780/api/commands/dispatch`。
 没有 CORS 头,浏览器读不到响应;校了 Origin,请求根本进不来。
 
-允许列表里有 Vite 开发端口 5173 —— **上线前端后要把它删掉**(见「待办」)。
+**开发端口默认不放行。** 前端开发期 Vite 跑在另一个端口,需要时设
+`COCKPIT_DEV_ORIGIN_PORTS=5173`,不设就一个额外来源都没有。
+
+这里有个刻意的设计:这个配置项**只收端口号,不收整条 Origin**。
+放行的永远是 `http://127.0.0.1:<port>` 和 `http://localhost:<port>` 两个字面量,
+所以它被误配、被复制到别处、甚至被人当成「加个白名单」来用,也**变不出一个外部域名**。
+一个只能开本机的开关,和一个能开任意来源的开关,风险差着数量级。
+(第一版把 5173 硬编码在允许列表里,等于默认长期开着这个口子。)
 
 ### N4 · 响应头
 
@@ -176,6 +183,7 @@ CLI 调用的调试钩子 `onCall` 只记 argv、耗时、成败,**从不记 std
 | N1 | `npm start` 后看日志里的绑定地址;从另一台机器访问 `http://<本机IP>:4780` 应该连不上 |
 | N2 | `curl -H "Host: evil.com" http://127.0.0.1:4780/api/roster` → 403 |
 | N3 | `curl -H "Origin: https://evil.com" http://127.0.0.1:4780/api/roster` → 403;正常响应里没有 `Access-Control-Allow-Origin` |
+| N3(开发端口) | 不设环境变量时 `curl -H "Origin: http://localhost:5173" ...` → **403** |
 | W1 | `grep -rn "issue status\|issue update\|issue assign\|agent create" src/` → 应该一条都搜不到 |
 | W2/W3/W4/W5 | `npm test`,看 `test/guard.test.ts` 全绿 |
 | C1 | `grep -rn "config.json\|MULTICA_TOKEN\|Authorization\|Bearer" src/` → 应该一条都搜不到 |
@@ -185,6 +193,7 @@ CLI 调用的调试钩子 `onCall` 只记 argv、耗时、成败,**从不记 std
 
 ## 待办(不在本棒范围,但得有人记着)
 
-1. **前端上线后从 N3 的允许列表里删掉 `:5173`。** 那是 Vite 开发端口,生产不该留着。沈执已记在账上:**韩程接真写操作时(MTM-278)必删**,不等前端上线。
+1. ~~前端上线后从 N3 的允许列表里删掉 `:5173`。~~ **已处理**:改成默认不放行 +
+   `COCKPIT_DEV_ORIGIN_PORTS` 按需开,不再依赖「记得删」。
 2. 写操作接口目前是 501 未实现。韩程那一棒接上真实现时,**W1~W5 必须同时生效**,
    不能先接通再补安全。`test/guard.test.ts` 已经把规则测好了,直接接上即可。

@@ -63,6 +63,7 @@ test('三个角色三种状态,counts 对得上', () => {
       ['a3', []],
     ]),
     activeIssues: [issue()],
+    allIssues: [],
     cfg: NO_DEEP_LINKS,
     now: NOW,
   });
@@ -78,6 +79,7 @@ test('归档的 agent 不上阵', () => {
   const roster = buildRoster({
     agents: [agent('a1', '在职'), agent('a2', '已归档', { archived_at: NOW })],
     runtimes: [runtime()], tasksByAgent: new Map(), activeIssues: [],
+    allIssues: [],
     cfg: NO_DEEP_LINKS, now: NOW,
   });
   assert.deepEqual(roster.entries.map((e) => e.agent_id), ['a1']);
@@ -87,6 +89,7 @@ test('还没拉到 task 的 agent 也要出现在名单上(idle),不能凭空少
   const roster = buildRoster({
     agents: [agent('a1', '周构｜架构师')],
     runtimes: [runtime()], tasksByAgent: new Map(), activeIssues: [],
+    allIssues: [],
     cfg: NO_DEEP_LINKS, now: NOW,
   });
   assert.equal(roster.entries.length, 1);
@@ -99,6 +102,7 @@ test('没拉到战斗历史时 battles_loaded=false 且 stats=null —— 不能
   const roster = buildRoster({
     agents: [agent('a1', '韩程｜后端')],
     runtimes: [runtime()], tasksByAgent: new Map(), activeIssues: [],
+    allIssues: [],
     cfg: NO_DEEP_LINKS, now: NOW,
   });
   assert.equal(roster.entries[0]?.battles_loaded, false);
@@ -110,6 +114,7 @@ test('拉到了但确实一场没打过 → battles_loaded=true,stats 是真的 
   const roster = buildRoster({
     agents: [agent('a1', '新人')],
     runtimes: [runtime()], tasksByAgent: new Map([['a1', []]]), activeIssues: [],
+    allIssues: [],
     cfg: NO_DEEP_LINKS, now: NOW,
   });
   assert.equal(roster.entries[0]?.battles_loaded, true);
@@ -123,6 +128,7 @@ test('名下有 in_progress issue 却没有 running task → 卡住', () => {
     runtimes: [runtime()],
     tasksByAgent: new Map([['a1', [task({ agent_id: 'a1', status: 'completed' })]]]),
     activeIssues: [issue({ assignee_id: 'a1' })],
+    allIssues: [],
     cfg: NO_DEEP_LINKS, now: NOW,
   });
   assert.equal(roster.entries[0]?.state, 'stalled');
@@ -134,6 +140,7 @@ test('runtime 查不到时 runtime_status 是 unknown,但不判 offline', () => 
     runtimes: [runtime()],
     tasksByAgent: new Map([['a1', []]]),
     activeIssues: [],
+    allIssues: [],
     cfg: NO_DEEP_LINKS, now: NOW,
   });
   assert.equal(roster.entries[0]?.runtime_status, 'unknown');
@@ -149,6 +156,7 @@ test('current_battles 是数组 —— 一个角色可以同时打多场', () =>
       task({ id: 't2', agent_id: 'a1', status: 'running', completed_at: null }),
     ]]]),
     activeIssues: [], cfg: NO_DEEP_LINKS, now: NOW,
+    allIssues: [],
   });
   assert.equal(roster.entries[0]?.current_battles.length, 2);
 });
@@ -162,6 +170,7 @@ test('last_battle 取最近一场已结束的,不是最近一条 task', () => {
       task({ id: 'done', agent_id: 'a1', status: 'completed' }),
     ]]]),
     activeIssues: [], cfg: NO_DEEP_LINKS, now: NOW,
+    allIssues: [],
   });
   assert.equal(roster.entries[0]?.last_battle?.task_id, 'done');
 });
@@ -170,6 +179,7 @@ test('名字拆成显示名 + 职业', () => {
   const roster = buildRoster({
     agents: [agent('a1', '周构｜架构师')],
     runtimes: [runtime()], tasksByAgent: new Map(), activeIssues: [],
+    allIssues: [],
     cfg: NO_DEEP_LINKS, now: NOW,
   });
   assert.equal(roster.entries[0]?.display_name, '周构');
@@ -219,4 +229,60 @@ test('活跃集不收 done / backlog 的 issue 的负责人', () => {
     new Map(),
   );
   assert.deepEqual(picked, []);
+});
+
+/* ── 待接力:热档看不见的子任务,得靠冷档 issue_all 补 ── */
+
+test('子任务只在冷档里(in_review)时,父 issue 持有人仍判 waiting', () => {
+  // 这条是「热档 ∪ 冷档」那个并集的理由:in_review 不进热档 issue_active,
+  // 只看热档的话,把子任务派出去的指挥官会被误报成卡住。
+  const roster = buildRoster({
+    agents: [agent('cmd', '沈执｜总指挥')],
+    runtimes: [runtime()],
+    tasksByAgent: new Map([['cmd', [task({ agent_id: 'cmd' })]]]),
+    activeIssues: [issue({ id: 'parent', identifier: 'MTM-274', assignee_id: 'cmd' })],
+    allIssues: [
+      issue({ id: 'parent', identifier: 'MTM-274', assignee_id: 'cmd' }),
+      issue({ id: 'kid', identifier: 'MTM-275', parent_issue_id: 'parent', status: 'in_review', status_category: 'in_review', assignee_id: 'other' }),
+    ],
+    cfg: NO_DEEP_LINKS,
+    now: NOW,
+  });
+
+  const cmd = roster.entries.find((e) => e.agent_id === 'cmd')!;
+  assert.equal(cmd.state, 'waiting');
+  assert.match(cmd.state_reason, /MTM-274 的 1 个子任务在推进/);
+  assert.equal(roster.counts.stalled, 0, '「卡住」计数里不能混进待接力的人');
+  assert.equal(roster.counts.waiting, 1);
+});
+
+test('子任务全 done 时父 issue 持有人还是 stalled —— 该收口不收口', () => {
+  const roster = buildRoster({
+    agents: [agent('cmd', '沈执｜总指挥')],
+    runtimes: [runtime()],
+    tasksByAgent: new Map([['cmd', [task({ agent_id: 'cmd' })]]]),
+    activeIssues: [issue({ id: 'parent', assignee_id: 'cmd' })],
+    allIssues: [
+      issue({ id: 'kid', parent_issue_id: 'parent', status: 'done', status_category: 'done' }),
+    ],
+    cfg: NO_DEEP_LINKS,
+    now: NOW,
+  });
+
+  assert.equal(roster.entries[0]!.state, 'stalled');
+});
+
+test('同一条 issue 同时出现在热档和冷档时不重复计数', () => {
+  const kid = { id: 'kid', parent_issue_id: 'parent', assignee_id: 'other' };
+  const roster = buildRoster({
+    agents: [agent('cmd', '沈执｜总指挥')],
+    runtimes: [runtime()],
+    tasksByAgent: new Map([['cmd', [task({ agent_id: 'cmd' })]]]),
+    activeIssues: [issue({ id: 'parent', identifier: 'MTM-274', assignee_id: 'cmd' }), issue(kid)],
+    allIssues: [issue(kid)],
+    cfg: NO_DEEP_LINKS,
+    now: NOW,
+  });
+
+  assert.match(roster.entries[0]!.state_reason, /1 个子任务/, '并集要按 issue id 去重');
 });
