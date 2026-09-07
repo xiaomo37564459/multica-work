@@ -1,0 +1,33 @@
+# 依赖与构建产物
+node_modules/
+dist/
+web/dist/
+*.tsbuildinfo
+
+# 凭据 —— 本仓库是 PUBLIC 的,这几行是硬底线
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+config.local.json
+secrets/
+
+# 运行期产物
+logs/
+*.log
+.cache/
+data/
+tmp/
+.cockpit-tmp/
+
+# 过程文件
+.probe/
+*.draft.md
+screenshots/
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
