@@ -131,10 +131,12 @@
 }
 .pc-btn--primary:hover { --pc-btn-bg: var(--pc-accent-2); --pc-btn-line: var(--pc-accent-2); }
 
+/* 销毁性操作。底色用 --pc-danger-bg 而不是 --pc-st-failed ——
+   后者是画在深底上的信号色,够亮但压不住白字(实测 3.21,AA 要 4.5)。 */
 .pc-btn--danger {
-  --pc-btn-bg: var(--pc-st-failed);
+  --pc-btn-bg: var(--pc-danger-bg);
   --pc-btn-fg: #ffffff;
-  --pc-btn-line: var(--pc-st-failed);
+  --pc-btn-line: var(--pc-danger-bg);
 }
 
 .pc-btn--ghost {

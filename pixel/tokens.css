@@ -75,6 +75,14 @@
    「拿不到消息」,不是「角色在做什么」),只有卡片边框和状态灯不同。
    名字和 MTM-275 的数据契约 BattleState 一一对得上,映射表见
    pixel/sprites/index.js 的 STATE_FROM_CONTRACT。
+
+   为什么失败色有两个 token:
+     --pc-st-failed  是**信号色**,画在深底上(状态灯、卡片边框、进度条),
+                     必须够亮才抓得住眼睛;
+     --pc-danger-bg  是**承载白字的底色**(「中止任务」按钮),必须够暗
+                     白字才看得清(WCAG AA 4.5)。
+   一个颜色同时又要亮又要暗是做不到的,所以拆成两个。文字压底一律
+   用 --pc-danger-bg,别拿 --pc-st-failed 当按钮底。
    ============================================================ */
 
 /* ---------- 主题 A:深空指挥舱(已选定)----------
@@ -97,7 +105,7 @@
 
   --pc-text-hi: #e9eeff;
   --pc-text: #a3b0d2;
-  --pc-text-dim: #6a7699;
+  --pc-text-dim: #8791ad;
   --pc-text-on-accent: #04121a;
 
   --pc-accent: #3fe0c8;     /* 主强调:磷光青 */
@@ -108,6 +116,7 @@
   --pc-st-idle: #5d6b93;
   --pc-st-stuck: #ffb020;
   --pc-st-failed: #ff4f62;
+  --pc-danger-bg: #d81030;
   --pc-st-offline: #3a4258;
   --pc-st-unknown: #7b6ea8;
 
@@ -131,7 +140,7 @@
 
   --pc-text-hi: #fbeee1;
   --pc-text: #cfae9f;
-  --pc-text-dim: #927169;
+  --pc-text-dim: #ab918a;
   --pc-text-on-accent: #241206;
 
   --pc-accent: #f0a860;
@@ -142,6 +151,7 @@
   --pc-st-idle: #8d7a80;
   --pc-st-stuck: #f0a52c;
   --pc-st-failed: #e3564e;
+  --pc-danger-bg: #c93a32;
   --pc-st-offline: #574549;
   --pc-st-unknown: #96829e;
 
@@ -165,7 +175,7 @@
 
   --pc-text-hi: #17211c;
   --pc-text: #3a463f;
-  --pc-text-dim: #6d7a71;
+  --pc-text-dim: #464f49;
   --pc-text-on-accent: #f4f6ee;
 
   --pc-accent: #1f6f5c;
@@ -176,6 +186,7 @@
   --pc-st-idle: #6d7a71;
   --pc-st-stuck: #a86a00;
   --pc-st-failed: #b3302b;
+  --pc-danger-bg: #b3302b;
   --pc-st-offline: #8a938b;
   --pc-st-unknown: #6b5f7d;
 

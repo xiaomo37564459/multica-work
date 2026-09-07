@@ -16,6 +16,7 @@ import { HEADS, OUTFITS, PROPS } from '../sprites/parts.js';
 import { drawSprite, STATES, FRAMES, STATE_FROM_CONTRACT, toSpriteState } from '../sprites/renderer.js';
 import { INK, ramp, despair, drained } from '../sprites/palette.js';
 import { G } from '../sprites/body.js';
+import { audit, readThemes, contrast, AA_TEXT } from '../tools/contrast.js';
 
 const TOKENS = readFileSync(fileURLToPath(new URL('../tokens.css', import.meta.url)), 'utf8');
 const COMPONENTS = readFileSync(fileURLToPath(new URL('../components.css', import.meta.url)), 'utf8');
@@ -262,4 +263,53 @@ test('样张页开局用的就是选定的那套主题', () => {
   const m = html.match(/<html[^>]*data-theme="([^"]+)"/);
   assert.ok(m, '样张页 <html> 上没有 data-theme');
   assert.equal(m[1], 'deep-space', '样张页开局的主题和 MTM-276 定的 A 对不上');
+});
+
+/* ---------------- 对比度 ----------------
+   顾检在 MTM-276 验收时量出来的真缺陷:次要文字和「中止任务」按钮上的白字
+   都不到 WCAG AA 的 4.5。色值这种东西改一次很容易再漂回去,所以钉成测试。
+
+   门槛只卡「文字压底色」这一类,四层底色 --pc-bg-0~3 加两个按钮底。
+   已知还差一处不在门槛内:浅色主题 C 的 --pc-bg-sunken(输入框底)偏暗,
+   placeholder 压上去只有 3.58。修它要把 --pc-bg-sunken 拆成「凹陷面」和
+   「硬投影」两个 token(现在按钮投影、进度条槽、立绘地面影子都在用它),
+   动静比这次该做的大,而且 C 是备选主题 —— 已记进发现池 MTM-270。 */
+
+test('三套主题的文字压底色都过 WCAG AA 4.5', () => {
+  const rows = audit(readThemes(TOKENS)).filter((r) => r.bg !== '--pc-bg-sunken');
+  assert.ok(rows.length >= 39, `体检组合只有 ${rows.length} 组,像是没解析到主题`);
+  const bad = rows.filter((r) => !r.pass)
+    .map((r) => `${r.theme} ${r.fg}(${r.fgHex}) 压 ${r.bg}(${r.bgHex}) = ${r.ratio.toFixed(2)}`);
+  assert.deepEqual(bad, [], '这些组合看不清 —— ' + bad.join(' / '));
+});
+
+test('「中止任务」是销毁性操作,白字必须压得住', () => {
+  const themes = readThemes(TOKENS);
+  for (const [name, v] of Object.entries(themes)) {
+    assert.ok(v['--pc-danger-bg'], `${name} 缺 --pc-danger-bg`);
+    const r = contrast('#ffffff', v['--pc-danger-bg']);
+    assert.ok(r >= AA_TEXT, `${name} 的中止任务按钮白字只有 ${r.toFixed(2)},要 ${AA_TEXT}`);
+  }
+});
+
+test('次要文字要比正文淡 —— 达标不能靠把它调得和正文一样深', () => {
+  const themes = readThemes(TOKENS);
+  for (const [name, v] of Object.entries(themes)) {
+    for (const bg of ['--pc-bg-0', '--pc-bg-1', '--pc-bg-2', '--pc-bg-3']) {
+      const dim = contrast(v['--pc-text-dim'], v[bg]);
+      const body = contrast(v['--pc-text'], v[bg]);
+      assert.ok(dim < body,
+        `${name} 在 ${bg} 上:次要文字 ${dim.toFixed(2)} 不比正文 ${body.toFixed(2)} 淡,层级没了`);
+    }
+  }
+});
+
+test('按钮底色压在面板上要看得见(图形对比度 ≥ 3)', () => {
+  const themes = readThemes(TOKENS);
+  for (const [name, v] of Object.entries(themes)) {
+    for (const t of ['--pc-danger-bg', '--pc-accent']) {
+      const r = contrast(v[t], v['--pc-bg-1']);
+      assert.ok(r >= 3, `${name} 的 ${t} 压在面板上只有 ${r.toFixed(2)},按钮边界看不出来`);
+    }
+  }
 });
