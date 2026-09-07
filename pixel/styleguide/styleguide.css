@@ -1,0 +1,110 @@
+/* 样张页自己的排版。只管布局,不定义任何组件样式 ——
+   组件长什么样全在 components.css 里,这里改不动它。 */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { min-height: 100vh; padding-bottom: var(--pc-u12); }
+
+.sg-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pc-u4);
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--pc-u6) var(--pc-u6) var(--pc-u4);
+  border-bottom: var(--pc-border) solid var(--pc-line);
+  background: var(--pc-bg-1);
+}
+.sg-top__title p { margin: var(--pc-u2) 0 0; max-width: 62ch; font-size: var(--pc-fs-sm); }
+.sg-top__themes { display: flex; align-items: center; gap: var(--pc-u2); flex-wrap: wrap; }
+.sg-top__themes .pc-btn[aria-pressed='true'] {
+  --pc-btn-bg: var(--pc-accent);
+  --pc-btn-fg: var(--pc-text-on-accent);
+  --pc-btn-line: var(--pc-accent);
+}
+
+.sg-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-u12);
+  padding: var(--pc-u8) var(--pc-u6);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.sg-sec { display: flex; flex-direction: column; gap: var(--pc-u4); }
+.sg-sec__head p { margin: var(--pc-u2) 0 0; max-width: 78ch; font-size: var(--pc-fs-sm); }
+.sg-label { font-size: var(--pc-fs-xs); }
+.sg-spacer { flex: 1; }
+
+.sg-pad { padding: var(--pc-u4); display: flex; flex-direction: column; gap: var(--pc-u3); }
+.sg-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: var(--pc-u4); }
+.sg-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pc-u3); }
+.sg-stack { display: flex; flex-direction: column; gap: var(--pc-u3); }
+
+/* ---- 主视图 ---- */
+.sg-deck { padding: var(--pc-u4); display: flex; flex-direction: column; gap: var(--pc-u4); }
+.sg-deck__bar {
+  display: flex; align-items: center; gap: var(--pc-u3); flex-wrap: wrap;
+  padding-bottom: var(--pc-u3);
+  border-bottom: var(--pc-border) solid var(--pc-line);
+}
+.sg-deck__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--pc-u4);
+}
+.sg-deck .pc-unit { --pc-frame-cut: var(--pc-bg-1); }
+
+/* ---- 立绘总表 ---- */
+.sg-roster { padding: var(--pc-u4); display: flex; flex-direction: column; gap: var(--pc-u2); }
+.sg-roster__head,
+.sg-roster__row {
+  display: grid;
+  grid-template-columns: 190px repeat(4, 1fr);
+  align-items: center;
+  gap: var(--pc-u2);
+}
+.sg-roster__head { padding-bottom: var(--pc-u2); border-bottom: var(--pc-border) solid var(--pc-line); }
+.sg-roster__head span { font-size: var(--pc-fs-xs); color: var(--pc-text-dim); text-align: center; }
+.sg-roster__head span:first-child { text-align: left; }
+.sg-roster__row { border-bottom: var(--pc-border) solid var(--pc-bg-3); padding: var(--pc-u2) 0; }
+.sg-roster__who { display: flex; flex-direction: column; gap: 2px; padding-right: var(--pc-u2); }
+.sg-roster__who b { color: var(--pc-text-hi); font-weight: 400; }
+.sg-roster__who span { font-size: var(--pc-fs-xs); color: var(--pc-text-dim); }
+.sg-roster__cell {
+  display: flex; justify-content: center; align-items: flex-end;
+  padding: var(--pc-u) 0;
+  background: var(--pc-bg-sunken);
+  border: var(--pc-border) solid var(--pc-bg-3);
+}
+.sg-roster__cell pixel-avatar { --pc-sprite-scale: 3; }
+.sg-roster__bar { height: var(--pc-u); width: 100%; }
+
+/* ---- 色板 ---- */
+.sg-swatches { display: flex; flex-wrap: wrap; gap: var(--pc-u2); }
+.sg-sw { width: 118px; border: var(--pc-border) solid var(--pc-line); background: var(--pc-bg-3); }
+.sg-sw__chip { height: var(--pc-u8); border-bottom: var(--pc-border) solid var(--pc-line); }
+.sg-sw__txt { padding: var(--pc-u) var(--pc-u2); font-size: var(--pc-fs-xs); }
+.sg-sw__txt b { display: block; color: var(--pc-text-hi); font-weight: 400; }
+.sg-sw__txt code { color: var(--pc-text-dim); font-size: 10px; }
+
+/* ---- 战役地图 ---- */
+.sg-map { gap: var(--pc-u6); }
+.sg-map .pc-stage-row { padding: var(--pc-u2) 0; }
+
+/* ---- 关键状态 ---- */
+.sg-states { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--pc-u4); }
+.sg-state { display: flex; flex-direction: column; gap: var(--pc-u2); }
+.sg-state__cap { font-size: var(--pc-fs-xs); color: var(--pc-text-dim); }
+.sg-state__cap b { color: var(--pc-text-hi); font-weight: 400; }
+.sg-state > .pc-frame,
+.sg-state > .pc-empty,
+.sg-state > .pc-error { min-height: 168px; padding: var(--pc-u4); --pc-frame-cut: var(--pc-bg-0); }
+
+.sg-foot {
+  padding: var(--pc-u4) var(--pc-u6);
+  border-top: var(--pc-border) solid var(--pc-line);
+  font-size: var(--pc-fs-xs);
+}
+.sg-foot code { color: var(--pc-text); }
