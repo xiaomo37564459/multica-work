@@ -40,11 +40,32 @@ npm start
 ## 别的命令
 
 ```bash
-npm test          # 单测(93 条),不需要 npm install
+npm test          # 全仓库单测(122 条),不需要 npm install
 npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependency)
 ```
 
 > Node 只擦类型不检查类型 —— **`npm run typecheck` 不跑就等于没有契约约束**,验收和 CI 都要跑这条。
+
+### 测试是怎么被找到的(新增测试前先看这段)
+
+`npm test` 就是一条光秃秃的 `node --test`,**脚本里不写任何 glob** —— 由 Node 自己从仓库根往下递归找。
+所以新开目录放测试,不用改任何脚本,它自动就跑上了。
+
+这是刻意的。MTM-280 之前脚本里写死了一条只覆盖 `test/` 的 glob,`pixel/tests/` 的 27 条一条都没跑到,
+屏幕上却是「93 全绿」,**没有任何报错**。测试挂了会被看见,测试不跑不会 —— 这类故障最贵。
+
+**上面那个 122 是全仓库总数**(`test/` 95 + `pixel/tests/` 27),不是某个目录的数。
+新增测试后请把这个数字改掉;数字只是给人对账用的,真正兜底的是下面这条:
+
+- **测试文件必须叫 `xxx.test.js` / `xxx.test.ts`**,或者放在名为 `test` 的目录里。
+  `.spec.` 和 `.tests.` 都**不在** `node --test` 的发现规则内 —— 前端习惯用 `.spec.`,在这个仓库里不行。
+- 这条由 `test/test-discovery.test.ts` 按住:凡是 import 了 `node:test` 的文件,只要 `npm test` 发现不了它,
+  这条元测试就红并打印文件名。**名字起错 = 红灯,不会再悄悄消失。**
+
+两个用得上的细节:
+`node --test <目录>` 在 Node 24 上是坏的(会被当成模块去 require),要单跑某个目录得写 glob,
+例如 `node --test "pixel/tests/*.test.js"`;另外 `node --test` 不看 `.gitignore`,本地构建过前端之后
+`dist/` 里的产物也会被扫(干净克隆和 CI 没这问题,`dist/` 不进仓库)。
 
 ## 现在能用什么
 
@@ -93,6 +114,7 @@ docs/
 ├─ data-sources.md     每个字段对应哪条 multica 命令(全部实测)
 ├─ polling.md          轮询与限流策略 + 实测数字
 └─ security.md         本地安全边界,逐条编号可 review
+pixel/                 像素资产:立绘 + UI 皮肤(零依赖 ES 模块,自带 package.json 和 tests/)
 web/                   前端(还没开始)
 ```
 

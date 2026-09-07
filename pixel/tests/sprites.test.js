@@ -1,7 +1,8 @@
 /**
- * 像素资产的契约测试。零依赖,用 Node 自带的 test runner:
+ * 像素资产的契约测试。零依赖,用 Node 自带的 test runner。跟全仓库一起跑:
  *
- *   node --test pixel/tests/
+ *   npm test                                  # 全仓库(推荐)
+ *   node --test "pixel/tests/*.test.js"       # 只跑这一个目录(目录路径不行,得写 glob)
  *
  * 测的不是「好不好看」(那得人看),而是几条会悄悄坏掉的硬约束 ——
  * 加角色、改配色、改姿势时最容易踩的就是这些。
