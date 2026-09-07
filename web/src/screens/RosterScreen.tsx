@@ -1,0 +1,75 @@
+/**
+ * 主视图 —— 场景 1:早上打开,3 秒内看清谁在忙、忙什么、谁空闲、谁卡住。
+ *
+ * 布局就是为「3 秒」服务的:
+ *   1. 顶部统计条:告警(失败/卡住)单独一组放最前,waiting 明确不算卡住
+ *   2. 卡片按注意力排序:失败 > 卡住 > 战斗 > 待接力 > 未知 > 空闲 > 离线
+ *   3. 状态不靠读字:边框色 + 状态灯形状 + 立绘姿势三层冗余(苏绘的皮肤保证)
+ *
+ * 「派活」入口这一棒只留位置(disabled):写操作归下一棒 MTM-278。
+ */
+import type { CockpitApi } from '../api/api.ts';
+import { usePoll } from '../lib/usePoll.ts';
+import { ALARM_STATES, sortEntries, stateUi } from '../lib/states.ts';
+import { UnitCard } from '../components/UnitCard.tsx';
+import { StatusBanner } from '../components/StatusBanner.tsx';
+import { ErrorBox } from '../components/bits.tsx';
+import type { BattleState } from '@contract';
+
+const OTHER_STATES: BattleState[] = ['fighting', 'waiting', 'idle', 'offline', 'unknown'];
+
+export function RosterScreen(props: { api: CockpitApi; pollMs?: number }) {
+  const { api, pollMs = 3000 } = props;
+  const { data, meta, error, loading, refresh } = usePoll(() => api.roster(), pollMs, 'roster');
+
+  if (loading) {
+    return <div className="pc-empty" aria-busy="true">正在集结全队…</div>;
+  }
+  if (!data) {
+    return <ErrorBox error={error ?? { code: 'internal', message: '拉不到名单', retryable: true }} onRetry={refresh} />;
+  }
+
+  const entries = sortEntries(data.entries);
+  const serverTime = meta?.server_time ?? new Date().toISOString();
+  const alarmTotal = ALARM_STATES.reduce((n, s) => n + (data.counts[s] ?? 0), 0);
+
+  return (
+    <section>
+      <StatusBanner meta={meta} error={error} />
+
+      <div className="app-strip pc-frame pc-panel">
+        <div className="app-strip__group" data-alarm title="需要人出手的:失败(重试用尽)+ 卡住。待接力不算卡住,不在这一组">
+          <span className="app-strip__caption">{alarmTotal > 0 ? '要出手' : '无告警'}</span>
+          {ALARM_STATES.map((s) => (
+            <span key={s} className={`app-chip app-chip--alarm ${data.counts[s] > 0 ? '' : 'app-chip--zero'}`}>
+              <span className={`pc-lamp ${stateUi(s).lamp}`} aria-hidden />
+              {stateUi(s).label} <b className="pc-num">{data.counts[s]}</b>
+            </span>
+          ))}
+        </div>
+        <div className="app-strip__group" data-counts>
+          {OTHER_STATES.map((s) => (
+            <span key={s} className={`app-chip ${data.counts[s] > 0 ? '' : 'app-chip--zero'}`}>
+              <span className={`pc-lamp ${stateUi(s).lamp}`} aria-hidden />
+              {stateUi(s).label} <b className="pc-num">{data.counts[s]}</b>
+            </span>
+          ))}
+        </div>
+        <span className="app-spacer" />
+        <span className="pc-dim">{data.entries.length} 人在册</span>
+        <button
+          type="button"
+          className="pc-btn pc-btn--primary pc-btn--sm"
+          disabled
+          title="派活(真实建 issue 并指派)是写操作,归下一棒 MTM-278 —— 这里先把入口留出来"
+        >
+          ⚔ 派活
+        </button>
+      </div>
+
+      <div className="app-grid">
+        {entries.map((e) => <UnitCard key={e.agent_id} entry={e} serverTime={serverTime} />)}
+      </div>
+    </section>
+  );
+}

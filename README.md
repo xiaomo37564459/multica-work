@@ -44,6 +44,10 @@ npm test          # 全仓库单测(122 条),不需要 npm install
 npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependency)
 ```
 
+**前端界面**(五屏初版,默认 mock 数据):`cd web && npm install && npm run dev`
+→ 打开 `http://localhost:5173/`。前端自己的 76 条测试用 vitest 跑(`cd web && npm test`),
+不在上面 122 条里 —— 命名与两套 runner 的分界规则见下一节和 `web/README.md`。
+
 > Node 只擦类型不检查类型 —— **`npm run typecheck` 不跑就等于没有契约约束**,验收和 CI 都要跑这条。
 
 ### 测试是怎么被找到的(新增测试前先看这段)
@@ -66,6 +70,10 @@ npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependenc
 `node --test <目录>` 在 Node 24 上是坏的(会被当成模块去 require),要单跑某个目录得写 glob,
 例如 `node --test "pixel/tests/*.test.js"`;另外 `node --test` 不看 `.gitignore`,本地构建过前端之后
 `dist/` 里的产物也会被扫(干净克隆和 CI 没这问题,`dist/` 不进仓库)。
+
+**web/ 是另一个 runner 的地盘**:前端测试归 vitest,文件一律 `*.test.tsx`(哪怕没有 JSX),
+且不放进名为 `test` 的目录 —— `.tsx` 不在 `node --test` 的发现规则里,两套 runner 才不会抢同一个文件
+(`.test.ts` 会被根上的 `npm test` 扫走然后当场跑红,MTM-277 实测过)。规则详见 `web/README.md`。
 
 ## 现在能用什么
 
@@ -115,7 +123,7 @@ docs/
 ├─ polling.md          轮询与限流策略 + 实测数字
 └─ security.md         本地安全边界,逐条编号可 review
 pixel/                 像素资产:立绘 + UI 皮肤(零依赖 ES 模块,自带 package.json 和 tests/)
-web/                   前端(还没开始)
+web/                   前端五屏初版(React+Vite,默认 mock 数据;跑法见 web/README.md)
 ```
 
 ## 从哪儿开始读
