@@ -40,7 +40,7 @@ npm start
 ## 别的命令
 
 ```bash
-npm test          # 单测(75 条),不需要 npm install
+npm test          # 单测(93 条),不需要 npm install
 npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependency)
 ```
 
