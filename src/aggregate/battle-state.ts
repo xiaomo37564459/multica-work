@@ -24,19 +24,6 @@ export interface StateInput {
   tasks: readonly RawTask[];
   /** 当前分派给该 agent 且 status_category 属于 in_progress / blocked 的 issue。 */
   openIssues: readonly RawIssue[];
-  /**
-   * issue id → 该 issue 底下「活着的」子任务条数(status_category ∈ todo/in_progress/in_review)。
-   * 没有活子任务的 issue 不放 key。
-   *
-   * 用来把**派单的人**和**躺活的人**分开:指挥官手里长期握着父 issue,
-   * 子任务派出去以后他本人当然没有在跑的战斗 —— 那既不是卡住,也不是空闲。
-   * 没有这个输入,持有父 issue 的人会被 5b 长期常亮误报成「卡住」,
-   * 场景 1「谁卡住一眼看清」就废了。口径见 docs/data-contract.md「状态灯」一节。
-   *
-   * **刻意用子 issue 的状态判,不用「有没有 run 在跑」**:
-   * 棒与棒交接的空档里一个 run 都没有,用 run 判会让状态灯闪 stalled(抖动)。
-   */
-  liveChildCounts: ReadonlyMap<string, number>;
 }
 
 export interface StateVerdict {
@@ -56,19 +43,14 @@ export interface StateVerdict {
  * 4. defeated —— 最近一条 task failed 且 attempt >= max_attempts。重试用尽 = 真死了,得有人管。
  * 5. stalled  —— 两种情况:
  *      a) 最近一条 task failed 但还能重试 —— 平台会自动再来一次,但此刻没在动;
- *      b) 名下有 in_progress / blocked 的 issue、没有 running task,
- *         **且至少有一条 issue 底下没有活着的子任务** —— 活躺着没人打(队规第 7 条要防的就是这个)。
- *         「混合时卡住优先」:一条派出去了、一条躺着,算卡住,而且只数躺着的那条。
- *         blocked 例外 —— 那是人明确标出来的求助信号,不管子任务动没动都要亮灯。
- * 6. waiting  —— 待接力:名下**每条** in_progress issue 底下都有活着的子任务。
- *                派完活的指挥官落在这里。它不进「卡住」计数,也不等于空闲。
- * 7. idle     —— 其它(手上真没活)。
+ *      b) 名下有 in_progress / blocked 的 issue,却没有 running task —— 活躺着没人打(队规第 7 条要防的就是这个)。
+ * 6. idle     —— 其它。
  *
  * 注意:runtimeStatus 传 'unknown' 时**不判 offline**。
  * 查不到 runtime 比确认离线弱得多,不能因为一次数据缺失就把全员点成灰的。
  */
 export function decideBattleState(input: StateInput): StateVerdict {
-  const { runtimeStatus, battlesLoaded, tasks, openIssues, liveChildCounts } = input;
+  const { runtimeStatus, battlesLoaded, tasks, openIssues } = input;
 
   if (runtimeStatus === 'offline') {
     return { state: 'offline', reason: '所在运行时离线,联系不上' };
@@ -112,23 +94,14 @@ export function decideBattleState(input: StateInput): StateVerdict {
     if (blocked.length > 0) {
       return { state: 'stalled', reason: `名下有 ${blocked.length} 条被标为 blocked 的任务` };
     }
-    // 底下有活子任务的 issue,持有人不该被算成躺着 —— 他是在等接力。
-    const ownWork = openIssues.filter((i) => !liveChildCounts.has(i.id));
-    if (ownWork.length > 0) {
-      // 混合时卡住优先:只按真正躺着的那几条数,派出去的不算。
-      return {
-        state: 'stalled',
-        reason: `名下有 ${ownWork.length} 条进行中的任务,但没有在跑的战斗`,
-      };
-    }
-
-    const childTotal = openIssues.reduce((n, i) => n + (liveChildCounts.get(i.id) ?? 0), 0);
-    const first = openIssues[0];
+    // 注意:持有父 issue、子任务已经派出去的指挥官会落到这里,被误报成「卡住」。
+    // 产品口径已定(策衡 2026-09-04):这种情况应判 waiting(待接力),规则见
+    // docs/data-contract.md「状态灯」一节。枚举值本 PR 已经加好,**规则实现归 MTM-278**
+    // —— 判定要用子 issue 的状态,而子 issue 数据(todo / in_review 那部分)不在热档里,
+    // 得等韩程那一棒把冷档 issue_all 接进聚合层。在那之前这里照旧报 stalled。
     return {
-      state: 'waiting',
-      reason: openIssues.length === 1 && first
-        ? `${first.identifier} 的 ${childTotal} 个子任务在推进,等接力回来`
-        : `名下 ${openIssues.length} 条已派下去,${childTotal} 个子任务在推进,等接力回来`,
+      state: 'stalled',
+      reason: `名下有 ${openIssues.length} 条进行中的任务,但没有在跑的战斗`,
     };
   }
 
@@ -139,12 +112,6 @@ export function decideBattleState(input: StateInput): StateVerdict {
 export const STATE_DISPLAY_ORDER: readonly BattleState[] = [
   'defeated', 'stalled', 'fighting', 'waiting', 'idle', 'offline', 'unknown',
 ];
-
-/**
- * 场景 1 的「卡住」计数只数这两种 —— **不含 waiting**。
- * 这盏灯要零已知误报才立得住:混进「派完活在等接力」的人,数字就不可信了。
- */
-export const ALARM_STATES: readonly BattleState[] = ['defeated', 'stalled'];
 
 export function countStates(states: readonly BattleState[]): Record<BattleState, number> {
   const counts = {

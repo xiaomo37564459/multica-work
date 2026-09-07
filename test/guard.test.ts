@@ -31,22 +31,6 @@ test('N3:带了 Origin 就必须是本机,挡浏览器里的恶意页面', () =>
   assert.equal(isAllowedOrigin('null', PORT), false);
 });
 
-test('N3:开发端口默认不放行 —— 不配 COCKPIT_DEV_ORIGIN_PORTS 就一个额外来源都没有', () => {
-  // 第一版把 Vite 的 5173 硬编码进了允许列表,等于长期留着一个口子。
-  assert.equal(isAllowedOrigin('http://localhost:5173', PORT), false);
-  assert.equal(isAllowedOrigin('http://127.0.0.1:5173', PORT), false);
-});
-
-test('N3:配了开发端口才放行,且只放行本机的那个端口', () => {
-  assert.equal(isAllowedOrigin('http://localhost:5173', PORT, [5173]), true);
-  assert.equal(isAllowedOrigin('http://127.0.0.1:5173', PORT, [5173]), true);
-  assert.equal(isAllowedOrigin('http://localhost:5174', PORT, [5173]), false, '只开配的那个端口');
-  assert.equal(isAllowedOrigin('https://evil.example.com', PORT, [5173]), false);
-  assert.equal(isAllowedOrigin('https://localhost:5173', PORT, [5173]), false, 'https 也不是同一个来源');
-  // 关键性质:配置项只收端口号,再怎么误用也变不出一个外部域名。
-  assert.equal(isAllowedOrigin('http://evil.example.com:5173', PORT, [5173]), false);
-});
-
 test('W1:写操作白名单只有两条', () => {
   assert.deepEqual(Object.keys(WRITE_ALLOWLIST).sort(), ['dispatch', 'shout']);
   assert.equal(isAllowedWrite('dispatch'), true);

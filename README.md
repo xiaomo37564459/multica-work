@@ -72,7 +72,6 @@ COCKPIT_WARM_MS=10000
 COCKPIT_SWEEP_MS=60000
 COCKPIT_COLD_MS=300000
 COCKPIT_MAX_CONCURRENCY=4       # 别调大,实测收益递减还会抖
-COCKPIT_DEV_ORIGIN_PORTS=       # 前端开发期额外放行的本机端口(Vite 填 5173);默认空 = 一个都不放
 
 # 跳回 Multica 本体的链接模板。不配的话 deep_link 全是 null,界面不画跳转按钮。
 COCKPIT_ISSUE_URL_TEMPLATE='https://<你的 Multica 地址>/{workspace}/issue/{identifier}'

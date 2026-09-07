@@ -24,11 +24,6 @@ export interface CockpitConfig {
   maxConcurrency: number;
   cliTimeoutMs: number;
   usageWindowDays: number;
-  /**
-   * N3 的开发期例外:额外放行 http://127.0.0.1:<port> / http://localhost:<port> 的端口号。
-   * **默认空数组** —— 不配就一个额外来源都不放。前端开发时设 `COCKPIT_DEV_ORIGIN_PORTS=5173`。
-   */
-  devOriginPorts: number[];
   /** 见 normalize.ts 的 DeepLinkConfig 注释:这是唯一没实测过的配置。 */
   issueUrlTemplate: string | null;
   agentUrlTemplate: string | null;
@@ -41,18 +36,6 @@ function intEnv(name: string, fallback: number): number {
   if (raw == null || raw.trim() === '') return fallback;
   const n = Number.parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
-}
-
-/**
- * 端口列表环境变量。只认 1~65535 的整数,别的一律丢掉。
- * 刻意只收端口号不收整条 Origin —— 配错了也只能放行本机,伪造不出外部域名。
- */
-function portListEnv(name: string): number[] {
-  const raw = process.env[name];
-  if (raw == null || raw.trim() === '') return [];
-  return raw.split(',')
-    .map((s) => Number.parseInt(s.trim(), 10))
-    .filter((n) => Number.isInteger(n) && n > 0 && n < 65_536);
 }
 
 function strEnv(name: string): string | null {
@@ -73,7 +56,6 @@ export function loadConfig(): CockpitConfig {
     maxConcurrency: intEnv('COCKPIT_MAX_CONCURRENCY', 4),
     cliTimeoutMs: intEnv('COCKPIT_CLI_TIMEOUT_MS', 15_000),
     usageWindowDays: intEnv('COCKPIT_USAGE_DAYS', 7),
-    devOriginPorts: portListEnv('COCKPIT_DEV_ORIGIN_PORTS'),
     issueUrlTemplate: strEnv('COCKPIT_ISSUE_URL_TEMPLATE'),
     agentUrlTemplate: strEnv('COCKPIT_AGENT_URL_TEMPLATE'),
     projectUrlTemplate: strEnv('COCKPIT_PROJECT_URL_TEMPLATE'),

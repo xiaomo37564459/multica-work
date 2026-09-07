@@ -19,18 +19,6 @@ import {
 /** 一个 issue 算不算「活躺着」的判据。 */
 const OPEN_CATEGORIES = new Set(['in_progress', 'blocked']);
 
-/**
- * 什么样的子任务算「还活着」(口径由策衡定,2026-09-04)。
- *
- * 刻意**用子 issue 的状态判,不用「有没有 run 在跑」**:
- * 棒与棒交接的空档里一个 run 都没有,用 run 判会让指挥官的状态灯一闪一闪。
- *
- * 三种「不算活着」的情况都该让持有人亮灯,所以刻意不收:
- *   done/cancelled —— 子任务收完了还不结单,该收口不收口;
- *   blocked        —— 整条链卡死了,正是指挥官该出手的时候。
- */
-const LIVE_CHILD_CATEGORIES = new Set(['todo', 'in_progress', 'in_review']);
-
 export interface RosterInput {
   agents: readonly RawAgent[];
   runtimes: readonly RawRuntime[];
@@ -38,19 +26,13 @@ export interface RosterInput {
   tasksByAgent: ReadonlyMap<string, readonly RawTask[]>;
   /** 当前 status_category 属于 in_progress / blocked 的 issue。 */
   activeIssues: readonly RawIssue[];
-  /**
-   * 全量 issue(冷档 issue_all 缓存)。**只用来数子任务**,不进主视图。
-   * 为什么必须要它:判「待接力」得看子任务活没活,而活着的子任务包含 todo / in_review,
-   * 这两种不在热档 issue_active 里。传空数组不会报错,但持有父 issue 的人会被误判成卡住。
-   */
-  allIssues: readonly RawIssue[];
   cfg: DeepLinkConfig;
   /** 统一的「现在」,保证一屏里所有已耗时口径一致。 */
   now: string;
 }
 
 export function buildRoster(input: RosterInput): Roster {
-  const { agents, runtimes, tasksByAgent, activeIssues, allIssues, cfg, now } = input;
+  const { agents, runtimes, tasksByAgent, activeIssues, cfg, now } = input;
 
   const runtimeById = new Map(runtimes.map((r) => [r.id, r]));
   const agentIds = new Set(agents.map((a) => a.id));
@@ -72,19 +54,6 @@ export function buildRoster(input: RosterInput): Roster {
     openByAgent.set(issue.assignee_id, list);
   }
 
-  // 父 issue id → 底下还活着的子任务条数。
-  // 数据源是**热档 ∪ 冷档**:冷档(300s)才有 todo / in_review 的子任务,
-  // 热档(3s)保证 in_progress / blocked 的状态是新的。同一条 issue 以热档为准。
-  const liveChildCounts = new Map<string, number>();
-  const seen = new Set<string>();
-  for (const issue of [...activeIssues, ...allIssues]) {
-    if (seen.has(issue.id)) continue;
-    seen.add(issue.id);
-    if (!issue.parent_issue_id) continue;
-    if (!LIVE_CHILD_CATEGORIES.has(issue.status_category)) continue;
-    liveChildCounts.set(issue.parent_issue_id, (liveChildCounts.get(issue.parent_issue_id) ?? 0) + 1);
-  }
-
   const entries: RosterEntry[] = agents
     .filter((a) => a.archived_at == null)
     .map((agent) => {
@@ -102,7 +71,6 @@ export function buildRoster(input: RosterInput): Roster {
         battlesLoaded,
         tasks,
         openIssues,
-        liveChildCounts,
       });
 
       const battles = tasks.map((t) => toBattle(t, ctx));

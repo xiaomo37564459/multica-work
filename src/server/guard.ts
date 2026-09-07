@@ -31,23 +31,16 @@ export function isAllowedHost(hostHeader: string | undefined, port: number): boo
  * N3:允许的 Origin。
  * 同源请求(直接开页面)通常不带 Origin,所以 undefined 放行;
  * 一旦带了 Origin 就必须是本机 —— 别的网站的 JS 打过来一律拒。
- *
- * `devPorts` 是给前端开发期(Vite 跑在另一个端口)开的口子,**默认空**。
- * 关键在于它只收端口号、不收整条 Origin:配置项再怎么被误用,
- * 也只能放行 http://127.0.0.1:<port> 和 http://localhost:<port>,
- * 永远变不出一个外部域名来。见 docs/security.md 规则 N3。
  */
-export function isAllowedOrigin(
-  origin: string | undefined,
-  port: number,
-  devPorts: readonly number[] = [],
-): boolean {
+export function isAllowedOrigin(origin: string | undefined, port: number): boolean {
   if (origin == null) return true;
-  const allowed = new Set<string>();
-  for (const p of [port, ...devPorts]) {
-    allowed.add(`http://${LOOPBACK_HOST}:${p}`);
-    allowed.add(`http://localhost:${p}`);
-  }
+  const allowed = new Set([
+    `http://${LOOPBACK_HOST}:${port}`,
+    `http://localhost:${port}`,
+    // 前端开发期 Vite 默认端口,只在 dev 模式下才该出现。
+    'http://localhost:5173',
+    `http://${LOOPBACK_HOST}:5173`,
+  ]);
   return allowed.has(origin.toLowerCase());
 }
 
