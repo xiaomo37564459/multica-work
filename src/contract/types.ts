@@ -115,10 +115,18 @@ export interface ProjectRef {
  *   offline  —— 该 agent 所在 runtime 不在线
  *   fighting —— 有 status=running 的 task
  *   defeated —— 最近一条 task failed 且 attempt >= max_attempts(重试用尽)
- *   stalled  —— 最近一条 task failed 但还能重试;或名下有 in_progress/blocked 的 issue 却没有 running task
+ *   stalled  —— 最近一条 task failed 但还能重试;或名下有 in_progress/blocked 的 issue 却没有 running task,
+ *               **且这些 issue 底下也没有活着的子任务**
+ *   waiting  —— 待接力:活都派下去了,子任务有人在推进,本人在等接力回来
  *   idle     —— 其它
+ *
+ * 关于 waiting(产品口径由策衡定,2026-09-04):
+ *   指挥官把子任务派出去以后,他本人当然没有在跑的战斗 —— 这既不是卡住,也不是空闲。
+ *   画成卡住 = 「卡住」这盏灯有已知误报,场景 1 就立不住;
+ *   画成空闲 = 说他可以接新活,那是另一种说谎。所以单独一种状态。
+ *   界面一期不加第五张立绘:待接力 = 空闲立绘 + 一个角标。
  */
-export const BATTLE_STATES = ['fighting', 'stalled', 'defeated', 'idle', 'offline', 'unknown'] as const;
+export const BATTLE_STATES = ['fighting', 'stalled', 'defeated', 'waiting', 'idle', 'offline', 'unknown'] as const;
 export type BattleState = (typeof BATTLE_STATES)[number];
 
 export type RuntimeStatus = 'online' | 'offline' | 'unknown';

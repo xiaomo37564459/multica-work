@@ -56,7 +56,7 @@
 ```jsonc
 {
   "entries": [ /* RosterEntry[] —— 每人一张角色卡 */ ],
-  "counts": { "fighting": 2, "stalled": 3, "defeated": 0, "idle": 8, "offline": 0, "unknown": 0 }
+  "counts": { "fighting": 2, "stalled": 3, "defeated": 0, "waiting": 1, "idle": 7, "offline": 0, "unknown": 0 }
 }
 ```
 
@@ -70,10 +70,33 @@
 | `unknown` | 还不知道 | 战斗数据这一轮还没拉到(开机头几秒会这样) |
 | `fighting` | 战斗中 | 有 `running` 的任务 |
 | `defeated` | 失败 | 最近一条任务 failed **且重试用尽**(`attempt >= max_attempts`) |
-| `stalled` | 卡住 | (a) 最近一条 failed 但还能重试;或 (b) 名下有 in_progress/blocked 的 issue 却没有在跑的任务 |
-| `idle` | 空闲 | 其它 |
+| `stalled` | 卡住 | (a) 最近一条 failed 但还能重试;或 (b) 名下有 in_progress/blocked 的 issue、没有在跑的任务,**且至少有一条底下没有活着的子任务** |
+| `waiting` | 待接力 | 名下**每条** in_progress issue 底下都有活着的子任务 —— 活派下去了,本人在等接力回来 |
+| `idle` | 空闲 | 其它(手上真没活) |
 
-两条容易搞错的:
+三条容易搞错的:
+
+- **派单的人既不算卡住,也不算空闲 —— 单独一种 `waiting`(待接力)。**
+  指挥官把子任务派出去以后,他本人当然没有在跑的战斗。画成卡住,「卡住」这盏灯就有了已知误报,
+  场景 1 立不住;画成空闲,等于说他可以接新活,那是另一种说谎。
+  (实测触发过:沈执持有父 issue MTM-274,子任务都派出去了,被误报成卡住。)
+
+  判定细则(产品口径由策衡定,2026-09-04):
+
+  1. **什么算「活着的子任务」**:`status_category ∈ todo / in_progress / in_review`。
+     刻意**用子 issue 的状态判,不用「有没有 run 在跑」** —— 棒与棒交接的空档里一个 run 都没有,
+     用 run 判会让状态灯一闪一闪。
+  2. **混合时卡住优先**:只要有一条 issue 底下没有活着的子任务,照旧 `stalled`,
+     而且**只数躺着的那几条**。三种情况都该亮灯:没有子 issue(普通执行者)、
+     子 issue 全 blocked(整条链卡死,指挥官该出手)、子 issue 全收完还不结单(该收口不收口)。
+  3. **`blocked` 压过 `waiting`**:issue 本身被标 blocked 是人明确发出的求助信号,照亮不误。
+  4. **「卡住」计数不含 `waiting`**(`ALARM_STATES` 只有 `defeated` / `stalled`)。
+     界面一期不加第五张立绘:待接力 = 空闲立绘 + 一个角标。
+
+  **数据从哪来**:按 `parent_issue_id` 在内存里过滤,**不加任何平台调用**。
+  数据源是**热档 `issue_active` ∪ 冷档 `issue_all`** —— 冷档(300s)才有 todo / in_review 的子任务,
+  热档(3s)保证 in_progress / blocked 的状态是新的;同一条 issue 按 id 去重、以热档为准。
+  只喂热档的话,子任务处在 in_review 的指挥官会被误判成卡住。
 
 - **`runtime_status` 是 `unknown` 时不判 `offline`。** 查不到 runtime 比确认离线弱得多,
   不能因为一次数据缺失就把全员点灰。
@@ -82,6 +105,9 @@
 
 每张卡都带一个 `state_reason`(中文一句话,例「最近一战失败,等第 2 次重试(agent_error.unknown)」)。
 **界面做 tooltip,验收时对着它核规则。**
+
+> `waiting` 是 2026-09-04 由策衡拍板加进枚举的第七种状态,规则与实现都已落在本 PR 里,
+> 单测见 `test/battle-state.test.ts`「派单的人 vs 躺活的人」一节和 `test/roster.test.ts` 末尾三条。
 
 ### 一张角色卡长这样
 

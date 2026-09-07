@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import type {
-  ApiEnvelope, ApiError, ApiMeta, BattleState, ErrorCode, Health, Roster,
+  ApiEnvelope, ApiError, ApiMeta, BattleState, ErrorCode, Roster,
 } from '../contract/types.ts';
 import { MulticaCli, MulticaCliError } from '../multica/source.ts';
 import { buildRoster } from '../aggregate/roster.ts';
@@ -22,6 +22,7 @@ import type { DeepLinkConfig } from '../aggregate/normalize.ts';
 import { loadConfig } from './config.ts';
 import { isAllowedHost, isAllowedOrigin, LOOPBACK_HOST } from './guard.ts';
 import { Poller } from './poller.ts';
+import { buildHealth } from './health.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(HERE, '..', '..', 'package.json'), 'utf8')) as { version?: string };
@@ -89,6 +90,7 @@ function handleRoster(res: ServerResponse): void {
     runtimes: poller.runtimes.snapshot().value ?? [],
     tasksByAgent: poller.tasksByAgent(),
     activeIssues: poller.activeIssues.snapshot().value ?? [],
+    allIssues: poller.allIssues.snapshot().value ?? [],
     cfg: deepLinks,
     now: new Date().toISOString(),
   });
@@ -107,29 +109,24 @@ async function handleHealth(res: ServerResponse): Promise<void> {
   } catch {
     version = null;
   }
-  const snap = (name: Health['sources'][number]['name'], s: {
-    fetched_at: string | null; age_ms: number | null; stale: boolean;
-    consecutive_failures: number; last_error: string | null;
-  }): Health['sources'][number] => ({ name, ...s });
 
-  const health: Health = {
-    ok: true,
+  // 注意这里调的是 health() 不是 snapshot():前者根本不含 value。
+  // health 是唯一直连缓存内部状态的接口,业务数据一个字节都不该走这条路(规则 D3)。
+  ok(res, buildHealth({
     version: PKG.version ?? '0.0.0',
     bind: `${cfg.host}:${cfg.port}`,
-    cli: { available: version != null, version },
-    workspace_id: null,
-    deep_link_template: cfg.issueUrlTemplate,
+    cliVersion: version,
+    deepLinkTemplate: cfg.issueUrlTemplate,
     sources: [
-      snap('issue_active', poller.activeIssues.snapshot()),
-      snap('agent_list', poller.agents.snapshot()),
-      snap('project_list', poller.projects.snapshot()),
-      snap('squad_list', poller.squads.snapshot()),
-      snap('runtime_list', poller.runtimes.snapshot()),
-      snap('issue_all', poller.allIssues.snapshot()),
+      { name: 'issue_active', health: poller.activeIssues.health() },
+      { name: 'agent_list', health: poller.agents.health() },
+      { name: 'project_list', health: poller.projects.health() },
+      { name: 'squad_list', health: poller.squads.health() },
+      { name: 'runtime_list', health: poller.runtimes.health() },
+      { name: 'issue_all', health: poller.allIssues.health() },
     ],
-    server_time: new Date().toISOString(),
-  };
-  ok(res, health);
+    now: new Date().toISOString(),
+  }));
 }
 
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -138,7 +135,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     fail(res, 403, 'forbidden', 'Host 头不是本机地址,拒绝');
     return;
   }
-  if (!isAllowedOrigin(req.headers.origin, cfg.port)) {
+  if (!isAllowedOrigin(req.headers.origin, cfg.port, cfg.devOriginPorts)) {
     fail(res, 403, 'forbidden', 'Origin 不是本机,拒绝');
     return;
   }

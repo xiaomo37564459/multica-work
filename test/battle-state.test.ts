@@ -7,7 +7,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { countStates, decideBattleState } from '../src/aggregate/battle-state.ts';
+import {
+  ALARM_STATES, countStates, decideBattleState, STATE_DISPLAY_ORDER,
+} from '../src/aggregate/battle-state.ts';
+import { BATTLE_STATES } from '../src/contract/types.ts';
 import type { RawIssue, RawTask } from '../src/multica/raw.ts';
 
 function task(over: Partial<RawTask> = {}): RawTask {
@@ -50,7 +53,10 @@ function issue(over: Partial<RawIssue> = {}): RawIssue {
   };
 }
 
-const base = { agentId: 'agent-1', runtimeStatus: 'online' as const, battlesLoaded: true, tasks: [], openIssues: [] };
+const base = {
+  agentId: 'agent-1', runtimeStatus: 'online' as const, battlesLoaded: true,
+  tasks: [], openIssues: [], liveChildCounts: new Map<string, number>(),
+};
 
 test('runtime 离线 → offline,压倒其它一切', () => {
   const v = decideBattleState({
@@ -125,6 +131,64 @@ test('名下有 blocked issue → stalled,理由指明 blocked', () => {
   assert.match(v.reason, /blocked/);
 });
 
+/* ── 派单的人 vs 躺活的人:waiting 口径(策衡 2026-09-04 定)── */
+
+test('持有父 issue、子任务还活着 → waiting,不是 stalled 也不是 idle', () => {
+  const v = decideBattleState({
+    ...base,
+    tasks: [task()],
+    openIssues: [issue({ id: 'parent-1', identifier: 'MTM-274' })],
+    liveChildCounts: new Map([['parent-1', 3]]),
+  });
+  assert.equal(v.state, 'waiting', '派完活等接力,既不是卡住也不是空闲');
+  assert.match(v.reason, /MTM-274 的 3 个子任务在推进/);
+});
+
+test('混合时卡住优先 —— 一条派出去了、一条躺着,算 stalled 且只数躺着的那条', () => {
+  const v = decideBattleState({
+    ...base,
+    tasks: [task()],
+    openIssues: [issue({ id: 'parent-1' }), issue({ id: 'own-1' })],
+    liveChildCounts: new Map([['parent-1', 2]]),
+  });
+  assert.equal(v.state, 'stalled');
+  assert.match(v.reason, /名下有 1 条/, '派出去的那条不该算进躺活数');
+});
+
+test('子任务全 blocked / 全收完 → 父 issue 持有人照旧 stalled', () => {
+  // liveChildCounts 里没有这条 issue,就代表底下没有活着的子任务。
+  const v = decideBattleState({
+    ...base,
+    tasks: [task()],
+    openIssues: [issue({ id: 'parent-1' })],
+    liveChildCounts: new Map([['someone-else', 5]]),
+  });
+  assert.equal(v.state, 'stalled', '整条链卡死或该收口不收口,指挥官该出手');
+});
+
+test('blocked 压过 waiting —— 人明确标了求助,子任务活着也要亮灯', () => {
+  const v = decideBattleState({
+    ...base,
+    tasks: [task()],
+    openIssues: [issue({ id: 'parent-1', status: 'blocked', status_category: 'blocked' })],
+    liveChildCounts: new Map([['parent-1', 3]]),
+  });
+  assert.equal(v.state, 'stalled');
+  assert.match(v.reason, /blocked/);
+});
+
+test('多条都派出去了 → waiting,理由汇总条数', () => {
+  const v = decideBattleState({
+    ...base,
+    tasks: [task()],
+    openIssues: [issue({ id: 'p1' }), issue({ id: 'p2' })],
+    liveChildCounts: new Map([['p1', 2], ['p2', 1]]),
+  });
+  assert.equal(v.state, 'waiting');
+  assert.match(v.reason, /名下 2 条已派下去,3 个子任务在推进/);
+});
+
+
 test('running 优先于 stalled —— 手上有活又在打,算在打', () => {
   const v = decideBattleState({
     ...base,
@@ -157,5 +221,19 @@ test('只看最近一条 task —— 更早的失败不该一直挂着红灯', (
 
 test('countStates 覆盖全部枚举键,没出现的记 0', () => {
   const c = countStates(['fighting', 'fighting', 'idle']);
-  assert.deepEqual(c, { fighting: 2, stalled: 0, defeated: 0, idle: 1, offline: 0, unknown: 0 });
+  assert.deepEqual(c, {
+    fighting: 2, stalled: 0, defeated: 0, waiting: 0, idle: 1, offline: 0, unknown: 0,
+  });
+});
+
+test('ALARM_STATES 不含 waiting —— 「卡住」这盏灯要零已知误报', () => {
+  assert.equal(ALARM_STATES.includes('waiting'), false);
+  assert.deepEqual([...ALARM_STATES], ['defeated', 'stalled']);
+});
+
+test('STATE_DISPLAY_ORDER 覆盖全部枚举值,waiting 排在 fighting 之后、idle 之前', () => {
+  assert.deepEqual([...STATE_DISPLAY_ORDER].sort(), [...BATTLE_STATES].sort());
+  const order = STATE_DISPLAY_ORDER;
+  assert.ok(order.indexOf('waiting') > order.indexOf('fighting'));
+  assert.ok(order.indexOf('waiting') < order.indexOf('idle'));
 });

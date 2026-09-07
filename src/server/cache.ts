@@ -23,13 +23,23 @@ export interface CacheEntryState<T> {
   nextAllowedAt: number;
 }
 
-export interface CacheSnapshot<T> {
-  value: T | null;
+/**
+ * 一个缓存格子的**元数据**:新鲜度和健康度,**不含 value**。
+ *
+ * 为什么单独拎出来:`/api/health` 只该讲「数据几点拉的、拉挂没有」,
+ * 一个字节的业务数据都不该出现在那里。让 health 拿得到的对象里**根本没有 value**,
+ * 比靠调用方小心翼翼地不去展开它可靠得多 —— 见 docs/security.md 规则 D3。
+ */
+export interface CacheHealth {
   fetched_at: string | null;
   age_ms: number | null;
   stale: boolean;
   consecutive_failures: number;
   last_error: string | null;
+}
+
+export interface CacheSnapshot<T> extends CacheHealth {
+  value: T | null;
 }
 
 export const BACKOFF_BASE_MS = 2_000;
@@ -59,17 +69,22 @@ export class CacheCell<T> {
     this.now = now;
   }
 
-  snapshot(): CacheSnapshot<T> {
+  /** 只要元数据,不带业务数据。/api/health 只准用这个。 */
+  health(): CacheHealth {
     const t = this.now();
     const age = this.state.fetchedAt == null ? null : t - this.state.fetchedAt;
     return {
-      value: this.state.value,
       fetched_at: this.state.fetchedAt == null ? null : new Date(this.state.fetchedAt).toISOString(),
       age_ms: age,
       stale: age == null || age > this.maxAgeMs,
       consecutive_failures: this.state.consecutiveFailures,
       last_error: this.state.lastError,
     };
+  }
+
+  /** 元数据 + 业务数据。窄的展进宽的是安全的;反过来就是那条 1.27MB 的口子。 */
+  snapshot(): CacheSnapshot<T> {
+    return { value: this.state.value, ...this.health() };
   }
 
   /** 现在允许发起一次拉取吗(退避窗口过了没)。 */
