@@ -77,7 +77,11 @@ pixel/
 原生 ES 模块 + 自定义元素,**没有构建步骤**,React / Vue / 原生都能直接用。
 需要在 JS 里操作就 `import { ROSTER, applySprite, spriteCanvas } from '/pixel/sprites/index.js'`。
 
-换皮肤只需改 `<html data-theme="...">`:`deep-space` / `dusk-forge` / `tactical-board`。
+**默认主题是 A 深空指挥舱**(`deep-space`)—— heory 在 MTM-276 从三套里挑的。
+值直接挂在 `:root` 上,所以 `data-theme` 不写也是 A,写业务代码不用管主题。
+
+`dusk-forge`(B 黄昏工坊)和 `tactical-board`(C 战术沙盘)保留为备选,
+改 `<html data-theme="...">` 就能切,主要用来证明换肤机制是通的。
 
 ## 加一个新角色
 
