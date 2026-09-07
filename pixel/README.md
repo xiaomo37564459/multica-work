@@ -41,12 +41,12 @@ pixel/
 | CSS 类 | `pc-<组件>`,修饰用 `--`,子元素用 `__` | `pc-unit`、`pc-unit--failed`、`pc-unit__band` |
 | 角色 key | 姓氏拼音小写,短且不重 | `shen` `zhou` `gu` `mika` `help` |
 | 立绘状态 | 只有这四个,对应四套姿势 | `working` `idle` `stuck` `failed` |
-| 契约状态 | 来自 MTM-275 的 `BattleState`,六个 | `fighting` `stalled` `defeated` `idle` `offline` `unknown` |
+| 契约状态 | 来自 MTM-275 的 `BattleState`,七个 | `fighting` `stalled` `defeated` `waiting` `idle` `offline` `unknown` |
 | 部件函数 | 描述长相,不描述人名 | `hardhat`、`beret`、`dbstack` |
 
 **状态名有两套,别混**:
 
-- 数据层用 MTM-275 数据契约的 `BattleState`(6 个值),那是合同,以它为准。
+- 数据层用 MTM-275 数据契约的 `BattleState`(7 个值),那是合同,以它为准。
 - 立绘只有 4 套姿势。`sprites/index.js` 的 `toSpriteState()` 负责换算,业务代码
   **直接把契约值传进来就行**,不用自己查表:
 
@@ -55,7 +55,9 @@ pixel/
   ```
 
   `offline` / `unknown` 借用空闲姿势 —— 这两个说的是「拿不到消息」,不是「角色在
-  做什么」,给它们编一个动作是骗人。区分靠卡片边框和状态灯:六种灯形状各不相同。
+  做什么」,给它们编一个动作是骗人。`waiting`(待接力)也借空闲姿势,但要**同时**挂
+  `.pc-flag--waiting` 角标(「待接力」)—— 指挥官把活派下去不等于可以接新活,
+  画成纯空闲是另一种说谎(MTM-277 补齐)。区分靠卡片边框和状态灯:七种灯形状各不相同。
 - 认不出的值一律退回 `idle`,绝不返回 `undefined`。契约里明写了平台以后可能加状态,
   指挥舱不能白屏。
 
@@ -132,6 +134,7 @@ pixel/
 | `failed` 失败 | 上半身塌坐,道具摔在地上 | 头顶裂痕 + ✕ 眼 | 实心 + ✕ |
 | `offline` 离线 | (借用空闲) | 无 | 空框 + 斜杠,整卡打斜纹压暗 |
 | `unknown` 未知 | (借用空闲) | 无 | 空框 + 中心点 |
+| `waiting` 待接力 | (借用空闲) | 「待接力」角标(`.pc-flag--waiting`) | 下半实心(沙漏里的沙),不闪 |
 
 「空闲什么标记都没有」是故意的:三个状态有标记、一个没有,扫一屏时眼睛先被有标记的抓走。
 

@@ -109,6 +109,7 @@ class PixelAvatar extends (HAS_DOM ? HTMLElement : class {}) {
       working: '战斗中', fighting: '战斗中',
       idle: '待命', stuck: '卡住', stalled: '卡住',
       failed: '失败', defeated: '失败',
+      waiting: '待接力',
       offline: '离线', unknown: '状态未知',
     }[state] || state;
     this.setAttribute('role', 'img');

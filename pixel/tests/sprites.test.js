@@ -22,8 +22,9 @@ import { audit, readThemes, contrast, AA_TEXT } from '../tools/contrast.js';
 const TOKENS = readFileSync(fileURLToPath(new URL('../tokens.css', import.meta.url)), 'utf8');
 const COMPONENTS = readFileSync(fileURLToPath(new URL('../components.css', import.meta.url)), 'utf8');
 
-/** MTM-275 数据契约里的 BattleState。改契约就得同步改这里,测试会挡住。 */
-const CONTRACT_STATES = ['fighting', 'stalled', 'defeated', 'idle', 'offline', 'unknown'];
+/** MTM-275 数据契约里的 BattleState。改契约就得同步改这里,测试会挡住。
+    waiting(待接力)是策衡在契约里定的第七态,MTM-277 补进皮肤:借空闲姿势 + 角标 + 专属灯。 */
+const CONTRACT_STATES = ['fighting', 'stalled', 'defeated', 'waiting', 'idle', 'offline', 'unknown'];
 
 const cells = (g) => g.d.filter(Boolean).length;
 const signature = (g) => g.d.map((c) => c || '.').join('|');
@@ -210,10 +211,10 @@ test('三套主题都定义了完整的四个状态色', () => {
 });
 
 /* ---------------- 与数据契约对齐 ----------------
-   契约在 MTM-275 的 src/contract/types.ts。它有 6 个状态,立绘只有 4 套姿势,
+   契约在 MTM-275 的 src/contract/types.ts。它有 7 个状态,立绘只有 4 套姿势,
    中间这层映射一旦漏一个,前端就会拿到 undefined 然后白屏。 */
 
-test('契约里的 6 个状态每一个都能映射到立绘状态', () => {
+test('契约里的 7 个状态每一个都能映射到立绘状态', () => {
   for (const st of CONTRACT_STATES) {
     assert.ok(STATES.includes(toSpriteState(st)), `契约状态 ${st} 映射不出立绘状态`);
   }
@@ -230,8 +231,8 @@ test('立绘自己的四个状态名传进来也认(本地写假数据时不用�
   for (const st of STATES) assert.equal(toSpriteState(st), st);
 });
 
-test('契约 6 态都有对应的状态灯样式和状态色,不然会渲染成没有样式的空盒子', () => {
-  const lamps = ['working', 'idle', 'stuck', 'failed', 'offline', 'unknown'];
+test('契约 7 态都有对应的状态灯样式和状态色,不然会渲染成没有样式的空盒子', () => {
+  const lamps = ['working', 'idle', 'stuck', 'failed', 'offline', 'unknown', 'waiting'];
   for (const st of lamps) {
     assert.match(COMPONENTS, new RegExp(`\\.pc-lamp--${st}\\b`), `components.css 缺 .pc-lamp--${st}`);
     const hits = TOKENS.match(new RegExp(`--pc-st-${st}\\s*:`, 'g')) || [];
