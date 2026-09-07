@@ -5,9 +5,12 @@
    不许再写死十六进制色值 —— 换肤靠切 data-theme,不靠改代码。
 
    用法:
-     <html data-theme="deep-space">   默认
-     <html data-theme="dusk-forge">
-     <html data-theme="tactical-board">
+     <html data-theme="deep-space">      A 深空指挥舱 —— 默认,heory 在 MTM-276 定的
+     <html data-theme="dusk-forge">      B 黄昏工坊 —— 备选,保留
+     <html data-theme="tactical-board">  C 战术沙盘 —— 备选,保留
+
+   **默认就是 A,不写 data-theme 也是 A**(A 的值直接挂在 :root 上)。
+   写业务代码不用管主题,照常用 var(--pc-*) 就行。
 
    语义分三层:
      1. 底座层 --pc-bg-* / --pc-line-* / --pc-text-*   随主题变
@@ -74,7 +77,11 @@
    pixel/sprites/index.js 的 STATE_FROM_CONTRACT。
    ============================================================ */
 
-/* ---------- 主题 A:深空指挥舱 ---------- */
+/* ---------- 主题 A:深空指挥舱(已选定)----------
+   heory 在 MTM-276 从 A/B/C 里挑的就是这套,它是全站默认。
+   值挂在 :root 上,所以不写 data-theme 拿到的也是 A —— 别把它挪进
+   [data-theme="deep-space"] 单独一块,那样默认就没了(有测试守着)。
+   B / C 保留在下面:一是证明换肤机制是通的,二是以后要投屏/打印再挑不用重做。 */
 :root,
 [data-theme="deep-space"] {
   --pc-theme-name: "深空指挥舱";

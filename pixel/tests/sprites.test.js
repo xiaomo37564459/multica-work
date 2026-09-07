@@ -236,3 +236,30 @@ test('契约 6 态都有对应的状态灯样式和状态色,不然会渲染成�
     assert.equal(hits.length, 3, `--pc-st-${st} 应该三套主题各定义一次,实际 ${hits.length} 次`);
   }
 });
+
+/* ---------------- 默认主题 ----------------
+   heory 在 MTM-276 定了 A 深空指挥舱。这个决定只写在注释里靠不住 ——
+   有人把 A 的值从 :root 挪进 [data-theme="deep-space"]、或者改了样张页的
+   data-theme,默认就悄悄变了,没人会发现。这两条测试把决定钉死。 */
+
+test('A 深空指挥舱是默认主题:它的值必须直接挂在 :root 上', () => {
+  const m = TOKENS.match(/:root,\s*\n\[data-theme="deep-space"\]\s*\{/);
+  assert.ok(m, ':root 和 [data-theme="deep-space"] 必须共用同一个块,否则不写 data-theme 就没有主题色');
+
+  // 另外两套只能各自挂在自己的 data-theme 上,不许也蹭到 :root。
+  // 逐个块地取「{ 之前那段选择器」来看,比拼正则可靠。
+  for (const t of ['dusk-forge', 'tactical-board']) {
+    const at = TOKENS.indexOf(`[data-theme="${t}"]`);
+    assert.ok(at > -1, `tokens.css 里没有 ${t} 这套主题`);
+    const selector = TOKENS.slice(TOKENS.lastIndexOf('*/', at) + 2, TOKENS.indexOf('{', at));
+    assert.ok(!selector.includes(':root'),
+      `${t} 是备选主题,不该和 :root 共用选择器(现在是 "${selector.trim()}")`);
+  }
+});
+
+test('样张页开局用的就是选定的那套主题', () => {
+  const html = readFileSync(fileURLToPath(new URL('../styleguide/index.html', import.meta.url)), 'utf8');
+  const m = html.match(/<html[^>]*data-theme="([^"]+)"/);
+  assert.ok(m, '样张页 <html> 上没有 data-theme');
+  assert.equal(m[1], 'deep-space', '样张页开局的主题和 MTM-276 定的 A 对不上');
+});
