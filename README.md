@@ -40,7 +40,7 @@ npm start
 ## 别的命令
 
 ```bash
-npm test          # 全仓库单测(122 条),不需要 npm install
+npm test          # 全仓库单测(163 条),不需要 npm install
 npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependency)
 ```
 
@@ -58,7 +58,7 @@ npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependenc
 这是刻意的。MTM-280 之前脚本里写死了一条只覆盖 `test/` 的 glob,`pixel/tests/` 的 27 条一条都没跑到,
 屏幕上却是「93 全绿」,**没有任何报错**。测试挂了会被看见,测试不跑不会 —— 这类故障最贵。
 
-**上面那个 122 是全仓库总数**(`test/` 95 + `pixel/tests/` 27),不是某个目录的数。
+**上面那个 163 是全仓库总数**(骨架棒 122 + MTM-278 新增 41),不是某个目录的数。
 新增测试后请把这个数字改掉;数字只是给人对账用的,真正兜底的是下面这条:
 
 - **测试文件必须叫 `xxx.test.js` / `xxx.test.ts`**,或者放在名为 `test` 的目录里。
@@ -81,14 +81,34 @@ npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependenc
 |---|---|
 | `GET /api/health` | ✅ 自检:绑定地址、CLI 可用性、各数据源新鲜度。**只有元数据,不含任何业务数据**(规则 D3) |
 | `GET /api/roster` | ✅ 全员角色状态(真数据) |
-| `GET /api/agents/:id` | 501 —— 契约已定,待实现 |
-| `GET /api/projects` · `/api/projects/:id/map` | 501 —— 契约已定,待实现 |
-| `GET /api/battles/:taskId/chain` | 501 —— 契约已定,待实现 |
-| `GET /api/runtimes` | 501 —— 契约已定,待实现 |
-| `POST /api/commands/dispatch` · `/shout` | 501 —— 契约 + 安全规则已定,待实现 |
+| GET /api/agents/:id | ✅ 角色详情(技能/装备/最近 20 场/公会) |
+| GET /api/projects · /api/projects/:id/map | ✅ 战役列表 + 关卡地图 |
+| GET /api/battles/:taskId/chain | ✅ 战斗回放(断链/截断标记) |
+| GET /api/issues/:id/battles | ✅ 按 issue 查战斗(MTM-278 新增) |
+| GET /api/runtimes | ✅ 全局蓝条/运行时体征 |
+| POST /api/commands/dispatch · /shout | ✅ **真实写操作**:派活建 issue + 指派;喊话发评论 + 唤醒。仅此两条 |
 
-501 的**不是待设计,是待实现**:字段、枚举、空值约定全部写死在 `src/contract/types.ts`,照着填即可。
+上面标 501 的时代结束了(MTM-278 全部填真)。写操作**只有这两条**,其余一律拒绝,规则见 docs/security.md。
 
+## 派活 / 喊话(真实写操作,仅这两条)
+
+这是本仓库**仅有的两个会真实写 Multica 的入口**,都是「提交即真实发生」的动作
+(会拉起一次真实运行、消耗用量):UI 上强制两段式确认;BFF 层另有白名单、
+限流(每分钟 20 次)、入参校验、临时文件中转四道闸,规则见 `docs/security.md` 的 W1~W5。
+
+```bash
+# 派活:给指定角色建 issue 并指派(平台会自动拉起该角色的运行)
+curl -X POST http://127.0.0.1:4780/api/commands/dispatch \
+  -H 'content-type: application/json' \
+  -d '{"title":"修一下首页文案","description":"把 hero 区标题改成中文","assignee_agent_id":"<角色UUID>","priority":"high"}'
+
+# 喊话:对进行中的 issue 发一条评论(平台会唤醒阵地上的角色)
+curl -X POST http://127.0.0.1:4780/api/commands/shout \
+  -H 'content-type: application/json' \
+  -d '{"issue_id":"<issue的UUID>","content":"优先把回归用例跑完再交付"}'
+```
+
+请求/响应字段见 `src/contract/types.ts` 的 DispatchRequest / ShoutRequest。
 ## 配置
 
 全部走环境变量,**仓库里不放任何凭据**(这个仓库是 public 的)。
@@ -114,8 +134,19 @@ COCKPIT_WORKSPACE_SLUG=mtmwork
 src/
 ├─ contract/types.ts   契约的唯一权威定义 —— 前端只认这个文件
 ├─ multica/            唯一的出网口:CLI 调用 + 原始字段类型
-├─ aggregate/          raw → 契约的归一 + 状态判定(纯函数,可单独测)
-└─ server/             HTTP 入口 / 分档轮询 / 缓存 / 安全闸
+├─ aggregate/
+│  ├─ normalize.ts     raw → 契约的归一
+│  ├─ battle-state.ts  状态灯判定规则(纯函数)
+│  ├─ roster.ts        主视图聚合(纯函数)
+│  └─ detail.ts        详情/地图/回放/运行时聚合(MTM-278)
+└─ server/
+   ├─ config.ts        全部配置来自环境变量
+   ├─ cache.ts         分层缓存 / 单飞 / 退避
+   ├─ guard.ts         安全闸 + 入参校验
+   ├─ poller.ts        分档轮询
+   ├─ router.ts        HTTP 路由(安全闸 + 全部接口 + 写操作,MTM-278)
+   ├─ health.ts        /api/health 响应组装
+   └─ index.ts         HTTP 入口
 docs/
 ├─ architecture.md     技术栈选型、模块边界、谁能碰谁
 ├─ data-contract.md    契约的人话版(为什么这么定)
