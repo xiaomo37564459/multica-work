@@ -35,7 +35,7 @@ describe('派活弹窗(两段式:填表 → 确认 → 提交)', () => {
 
   it('确认页写明真实代价,点确认才真正提交,成功后回调', async () => {
     const api = createMockApi({ latencyMs: 0, now: () => T0 });
-    const entries = await rosterEntries(api) as Array<{ agent_id: string; display_name: string }>;
+    const entries = await rosterEntries(api);
     const dispatch = vi.fn().mockResolvedValue({
       ok: true,
       data: { issue_id: 'i-new', identifier: 'MTM-999', deep_link: null },
@@ -58,7 +58,7 @@ describe('派活弹窗(两段式:填表 → 确认 → 提交)', () => {
 
   it('提交失败时错误可见、弹窗不关', async () => {
     const api = createMockApi({ latencyMs: 0, now: () => T0 });
-    const entries = await rosterEntries(api) as Array<{ agent_id: string; display_name: string }>;
+    const entries = await rosterEntries(api);
     const dispatch = vi.fn().mockResolvedValue({
       ok: false,
       error: { code: 'rate_limited', message: '写操作太频繁', retryable: true },
@@ -80,7 +80,7 @@ describe('喊话弹窗', () => {
       <ShoutModal issueId="i1" issueLabel="MTM-263 CI 缓存层修复" shout={shout} onClose={() => {}} onDone={onDone} />,
     );
     const next = screen.getByRole('button', { name: /下一步/ }) as HTMLButtonElement;
-    expect(next.disabled).toBe(true, '空内容不能提交');
+    expect(next.disabled).toBe(true);
     fireEvent.change(screen.getByPlaceholderText(/例:/), { target: { value: '优先跑回归' } });
     fireEvent.click(screen.getByRole('button', { name: /下一步/ }));
     expect(screen.getByText(/真实发一条评论并唤醒/)).toBeInTheDocument();
