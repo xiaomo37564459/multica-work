@@ -115,9 +115,9 @@ export function ErrorBox(props: { error: ApiError; onRetry?: () => void; homeLin
   const notImpl = props.error.code === 'not_implemented';
   return (
     <div className={notImpl ? 'pc-empty' : 'pc-error'} role="alert">
-      <div>{notImpl ? '⛏ 这个接口后端还没实现(501)' : `✕ ${props.error.message}`}</div>
+      <div>{notImpl ? '⛏ 这个操作在演示数据下不可用' : `✕ ${props.error.message}`}</div>
       {notImpl && <div className="pc-dim">{props.error.message}</div>}
-      {notImpl && <div className="pc-dim">真数据聚合归下一棒(MTM-278);当前可用 mock 演示数据走完整流程。</div>}
+      {notImpl && <div className="pc-dim">切顶栏「切真数据」后再用;读接口在真数据模式下全部可用。</div>}
       <div className="app-row">
         {props.onRetry && props.error.retryable && (
           <button type="button" className="pc-btn pc-btn--sm" onClick={props.onRetry}>再试一次</button>

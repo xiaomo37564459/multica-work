@@ -8,12 +8,12 @@
  *     出击角色详情(那里每场战斗都有回放入口),缺口记在 PRODUCT.md 待后端配合项。
  */
 import { useState } from 'react';
-import type { QuestNode } from '@contract';
+import type { Battle, QuestNode } from '@contract';
 import type { CockpitApi } from '../api/api.ts';
 import { usePoll } from '../lib/usePoll.ts';
 import { hashOf } from '../router.ts';
 import { fmtAgo } from '../lib/format.ts';
-import { questNodeUi, questStatusLabel, stateUi } from '../lib/states.ts';
+import { questNodeUi, questStatusLabel, stateUi, battleStatusUi } from '../lib/states.ts';
 import { DeepLink, EmptyBox, ErrorBox, Face, LevelPips, StatePill } from '../components/bits.tsx';
 import { StatusBanner } from '../components/StatusBanner.tsx';
 
@@ -44,6 +44,8 @@ export function CampaignScreen(props: { api: CockpitApi; projectId: string; poll
   const { api, projectId, pollMs = 10_000 } = props;
   const { data, meta, error, loading, refresh } = usePoll(() => api.campaign(projectId), pollMs, `campaign:${projectId}`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [battles, setBattles] = useState<Battle[] | null>(null);
+  const [battlesErr, setBattlesErr] = useState<string | null>(null);
 
   if (loading) return <div className="pc-empty" aria-busy="true">正在铺开战役地图…</div>;
   if (!data) return <ErrorBox error={error ?? { code: 'not_found', message: '没有这个战役', retryable: false }} onRetry={refresh} homeLink />;
@@ -137,9 +139,39 @@ export function CampaignScreen(props: { api: CockpitApi; projectId: string; poll
               {selected.assignee?.kind === 'agent' && (
                 <a className="pc-btn" href={hashOf({ screen: 'agent', id: selected.assignee.id })}>出击角色详情</a>
               )}
+              <button
+                type="button" className="pc-btn" data-issue-battles
+                onClick={() => {
+                  setBattles(null);
+                  setBattlesErr(null);
+                  void api.issueBattles(selected.issue_id).then((env) => {
+                    if (env.ok) {
+                      if (env.data.length === 0) setBattlesErr('这场关卡还没有战斗记录 —— 派个活或等角色出击');
+                      else setBattles(env.data);
+                    } else {
+                      setBattlesErr(env.error.message);
+                    }
+                  });
+                }}
+              >
+                ⟲ 查这场战斗
+              </button>
             </div>
-            {selected.assignee?.kind === 'agent' && (
-              <p className="pc-dim app-hint">战斗回放入口在角色详情的每场战斗上 —— 按关卡直查战斗需要后端补 issue→task 查询(见待后端配合项)。</p>
+            {battlesErr && <p className="pc-dim app-hint">{battlesErr}</p>}
+            {battles && (
+              <div className="app-quest-rows" data-issue-battles-list>
+                <div><span className="pc-dim">战斗 {battles.length} 场</span></div>
+                {battles.map((b) => (
+                  <div key={b.task_id} className="app-row">
+                    <a className="app-plain-link" href={hashOf({ screen: 'replay', taskId: b.task_id })}>
+                      {battleStatusUi(b.status).label} · 第 {b.attempt} 棒 · {fmtAgo(b.created_at, serverTime)}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selected.assignee?.kind === 'agent' && !battles && (
+              <p className="pc-dim app-hint">也可进角色详情看全部战斗与回放入口。</p>
             )}
           </aside>
         )}
