@@ -13,6 +13,7 @@ import type {
 } from '../contract/types.ts';
 import type { Aggregates, AggregatesInput } from '../aggregate/detail.ts';
 import { buildAggregates } from '../aggregate/detail.ts';
+import type { SourceName } from '../contract/types.ts';
 import type { CockpitConfig } from './config.ts';
 import { isAllowedHost, isAllowedOrigin, validateDispatch, validateShout, RateLimiter } from './guard.ts';
 import type { MulticaWriteSource } from '../multica/source.ts';
@@ -32,6 +33,8 @@ export interface RouterDeps {
   version: string;
   /** CLI 版本(health 用);拿不到传 null。 */
   cliVersion?: string | null;
+  /** 每次应答前异步探一次 CLI 版本(真服务传;测试省略则用 cliVersion 静态值)。 */
+  resolveCliVersion?: () => Promise<string | null>;
   /** 全量轮询缓存快照;null = 冷启动一个源都还没拉到。 */
   data: AggregatesInput | null;
   /** 写侧出口(MulticaCli 实现了它;测试塞记账假件)。 */
@@ -42,6 +45,16 @@ export interface RouterDeps {
   now?: () => string;
   /** 详情页请求到某个 agent 时触发一次装备栏按需拉取(可省;测试不传)。 */
   onAgentDetail?: (agentId: string) => void;
+  /** ApiMeta 的真实新鲜度(热档 fetched_at/age_ms/stale + 降级源);不传则给空值兜底。 */
+  metaInfo?: () => { fetched_at: string | null; age_ms: number | null; stale: boolean; degraded: string[] };
+  healthSources?: () => Array<{
+    name: SourceName;
+    fetched_at: string | null;
+    age_ms: number | null;
+    stale: boolean;
+    consecutive_failures: number;
+    last_error: string | null;
+  }>;
 }
 
 /** 路由可用的请求抽象:真的来自 IncomingMessage,测试直接给普通对象。 */
@@ -79,26 +92,27 @@ export function createRouter(deps: RouterDeps): Router {
   const writeLimiter = new RateLimiter();
   const now = deps.now ?? (() => new Date().toISOString());
 
-  function buildHealth(): Health {
+  function buildHealth(cliVersion: string | null): Health {
     return {
       ok: true,
       version: deps.version,
       bind: `${deps.cfg.host}:${deps.cfg.port}`,
-      cli: { available: deps.cliVersion != null, version: deps.cliVersion ?? null },
+      cli: { available: cliVersion != null, version: cliVersion },
       workspace_id: null,
       deep_link_template: deps.cfg.issueUrlTemplate,
-      sources: [],
+      sources: deps.healthSources?.() ?? [],
       server_time: now(),
     };
   }
 
   function meta(): ApiMeta {
+    const info = deps.metaInfo?.();
     const t = now();
     return {
-      fetched_at: t,
-      age_ms: 0,
-      stale: false,
-      degraded: [],
+      fetched_at: info?.fetched_at ?? null,
+      age_ms: info?.age_ms ?? null,
+      stale: info?.stale ?? true,
+      degraded: info?.degraded ?? [],
       server_time: t,
     };
   }
@@ -203,8 +217,11 @@ export function createRouter(deps: RouterDeps): Router {
     /* ── 读接口 ── */
     if (method === 'GET') {
       if (pathname === '/api/health') {
-        const h = buildHealth();
-        ok2(h);
+        let cliVersion = deps.cliVersion ?? null;
+        if (deps.resolveCliVersion) {
+          cliVersion = await deps.resolveCliVersion().catch(() => null);
+        }
+        ok2(buildHealth(cliVersion));
         return out;
       }
       if (pathname === '/api/roster' || pathname === '/api/projects' || pathname === '/api/runtimes') {

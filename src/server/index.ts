@@ -68,16 +68,26 @@ function snapshotInput(): AggregatesInput | null {
   };
 }
 
-/** 逐请求组装一份路由(共享限流器由 createRouter 闭包持有 —— 每进程一份)。 */
 const router = createRouter({
   cfg,
   version: PKG.version ?? '0.0.0',
+  resolveCliVersion: () => cli.version().catch(() => null),
   get data() {
     return snapshotInput();
   },
   write: cli,
   tmpDir: process.cwd(),
   onAgentDetail: (agentId) => poller.requestMcp(agentId),
+  // meta 的真实新鲜度以热档为准 —— 那才是 heory 盯的那一格。降级源也一并带上。
+  metaInfo: () => ({ ...poller.freshness(), degraded: poller.degradedSources() }),
+  healthSources: () => [
+    { name: 'issue_active' as const, ...poller.activeIssues.health() },
+    { name: 'agent_list' as const, ...poller.agents.health() },
+    { name: 'project_list' as const, ...poller.projects.health() },
+    { name: 'squad_list' as const, ...poller.squads.health() },
+    { name: 'runtime_list' as const, ...poller.runtimes.health() },
+    { name: 'issue_all' as const, ...poller.allIssues.health() },
+  ],
 });
 
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
