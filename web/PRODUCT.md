@@ -108,6 +108,7 @@ mock 会走时间:战斗耗时逐秒涨;开机头 6 秒许界、梁运是「战�
    **A.** `QuestNode` 加一个 `latest_task_id: string | null`(改契约,前端改动最小);
    **B.** 新增 `GET /api/issues/:id/battles` → `Battle[]`(不动现有类型,多一个接口)。
    前端现状:侧栏引导到出击角色详情(那里每场战斗都有回放),不阻塞验收。
+   **【MTM-278 落实】走了 B 案:新增 `GET /api/issues/:id/battles` → `Battle[]`,战役地图侧栏已接「查这场战斗」,直接列出该关卡的战斗与回放入口;前端 `CockpitApi` 加了 `issueBattles()`。**
 5. `POST /api/commands/dispatch` / `shout`:入口已留(主视图「派活」、详情「喊话」),
    请求/响应类型契约已定(`DispatchRequest/Result`, `ShoutRequest/Result`);接通时 guard W1~W5 同时生效。
 6. `GET /api/runtimes` → `RuntimeVitals[]`:前端本版未画屏;建议接通后在主视图顶栏加「运行时体征」小组件
