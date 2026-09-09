@@ -119,6 +119,9 @@
   --pc-danger-bg: #d81030;
   --pc-st-offline: #3a4258;
   --pc-st-unknown: #7b6ea8;
+  /* waiting(待接力,契约第七态):比 idle 亮、偏蓝 —— 「不用管我,但我没闲着」。
+     立绘沿用空闲姿势(见 STATE_FROM_CONTRACT),区分靠这盏灯 + pc-flag 角标。 */
+  --pc-st-waiting: #6f9df8;
 
   --pc-scanline: rgba(255, 255, 255, 0.028);
   --pc-glow: 0 0 0 2px rgba(63, 224, 200, 0.18), 0 0 16px rgba(63, 224, 200, 0.22);
@@ -154,6 +157,7 @@
   --pc-danger-bg: #c93a32;
   --pc-st-offline: #574549;
   --pc-st-unknown: #96829e;
+  --pc-st-waiting: #8fb0e0;
 
   --pc-scanline: rgba(255, 220, 180, 0.03);
   --pc-glow: 0 0 0 2px rgba(240, 168, 96, 0.2), 0 0 16px rgba(240, 168, 96, 0.24);
@@ -189,6 +193,7 @@
   --pc-danger-bg: #b3302b;
   --pc-st-offline: #8a938b;
   --pc-st-unknown: #6b5f7d;
+  --pc-st-waiting: #3d64a8;
 
   --pc-scanline: rgba(0, 0, 0, 0.022);
   --pc-glow: 0 0 0 2px rgba(31, 111, 92, 0.24);

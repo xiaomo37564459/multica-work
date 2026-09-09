@@ -1,0 +1,259 @@
+/* ============================================================
+   指挥舱前端的布局胶水。
+   规矩:只做排版,不发明颜色 —— 一切色值走苏绘的 var(--pc-*) token。
+   组件皮肤(卡片/灯/节点/时间轴)在 pixel/components.css,这里不重写。
+   ============================================================ */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ─────────── 顶栏 ─────────── */
+
+.app-top {
+  display: flex;
+  align-items: center;
+  gap: var(--pc-u3);
+  padding: var(--pc-u3) var(--pc-u4);
+  background: var(--pc-bg-1);
+  border-bottom: var(--pc-border) solid var(--pc-line);
+  position: sticky;
+  top: 0;
+  z-index: var(--pc-z-pop);
+}
+.app-brand {
+  color: var(--pc-text-hi);
+  font-size: var(--pc-fs-lg);
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.app-brand__sig { color: var(--pc-accent); }
+.app-nav { display: flex; gap: var(--pc-u2); }
+.app-nav a { text-decoration: none; }
+
+.app-main { flex: 1; width: 100%; max-width: 1440px; margin: 0 auto; padding: var(--pc-u4); }
+.app-foot {
+  padding: var(--pc-u3) var(--pc-u4);
+  border-top: var(--pc-border) solid var(--pc-line);
+  font-size: var(--pc-fs-xs);
+}
+
+/* ─────────── 通用小件 ─────────── */
+
+.app .pc-btn { white-space: nowrap; }
+.app-row { display: flex; align-items: center; gap: var(--pc-u2); flex-wrap: wrap; }
+.app-row--end { justify-content: flex-end; }
+.app-spacer { flex: 1; }
+.app-h2 { margin: 0 0 var(--pc-u3); }
+.app-h3 { margin: var(--pc-u4) 0 var(--pc-u2); }
+.app-crumb { margin-bottom: var(--pc-u3); display: flex; gap: var(--pc-u4); }
+.app-crumb a { color: var(--pc-text); text-decoration: none; }
+.app-crumb a:hover { color: var(--pc-text-hi); }
+.app-plain-link { color: inherit; text-decoration: none; }
+.app-plain-link:hover { color: var(--pc-accent); }
+
+.app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pc-u);
+  padding: 0 var(--pc-u2);
+  height: var(--pc-u6);
+  border: var(--pc-border) solid var(--pc-line);
+  background: var(--pc-bg-2);
+  font-size: var(--pc-fs-xs);
+  white-space: nowrap;
+}
+.app-chip--alarm { border-color: var(--pc-st-failed); color: var(--pc-text-hi); }
+.app-chip--zero { opacity: 0.55; }
+.app-chip--mock { border-color: var(--pc-accent-2); color: var(--pc-accent-2); }
+
+.app-code {
+  font-size: var(--pc-fs-xs);
+  background: var(--pc-bg-sunken);
+  padding: 0 var(--pc-u);
+  border: 1px solid var(--pc-line);
+  word-break: break-all;
+}
+
+.app-skel-line { display: block; height: var(--pc-u3); margin: var(--pc-u) 0; width: 100%; }
+.app-loading { display: flex; flex-direction: column; gap: var(--pc-u); }
+
+.app-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pc-u12);
+  height: var(--pc-u12);
+  border: var(--pc-border) solid var(--pc-line);
+  background: var(--pc-bg-sunken);
+  font-size: var(--pc-fs-xl);
+}
+img.app-avatar-fallback { object-fit: cover; image-rendering: pixelated; }
+
+/* ─────────── 新鲜度横幅 ─────────── */
+
+.app-banners { display: flex; flex-direction: column; gap: var(--pc-u); margin-bottom: var(--pc-u3); }
+.app-banner {
+  padding: var(--pc-u2) var(--pc-u3);
+  border: var(--pc-border) solid var(--pc-st-stuck);
+  background: var(--pc-bg-1);
+  color: var(--pc-st-stuck);
+  font-size: var(--pc-fs-sm);
+}
+.app-banner--bad { border-color: var(--pc-st-failed); color: var(--pc-st-failed); }
+
+/* ─────────── 主视图 ─────────── */
+
+.app-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--pc-u3);
+  flex-wrap: wrap;
+  padding: var(--pc-u3);
+  margin-bottom: var(--pc-u4);
+}
+.app-strip__group { display: inline-flex; align-items: center; gap: var(--pc-u2); flex-wrap: wrap; }
+.app-strip__group[data-alarm] {
+  padding-right: var(--pc-u3);
+  border-right: var(--pc-border) solid var(--pc-line-strong);
+}
+.app-strip__caption { color: var(--pc-text-dim); font-size: var(--pc-fs-xs); }
+.app-strip__group[data-alarm] .app-chip:not(.app-chip--zero) { border-color: var(--pc-st-failed); }
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--pc-u4);
+}
+.app-grid--projects { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+.app-state-word { margin-left: auto; font-size: var(--pc-fs-xs); }
+
+.app-battle { display: flex; flex-direction: column; gap: var(--pc-u); }
+.app-battle + .app-battle { margin-top: var(--pc-u2); padding-top: var(--pc-u2); border-top: 1px dashed var(--pc-line); }
+.app-card-foot { align-items: center; display: flex; flex-wrap: wrap; gap: var(--pc-u2); margin-top: var(--pc-u); }
+.app-fail-line { color: var(--pc-st-failed); font-size: var(--pc-fs-sm); }
+.app-output {
+  font-size: var(--pc-fs-sm);
+  color: var(--pc-text);
+  background: var(--pc-bg-1);
+  border-left: var(--pc-u) solid var(--pc-accent-dim);
+  padding: var(--pc-u) var(--pc-u2);
+  overflow-wrap: anywhere;
+}
+
+/* pc-flag 角标默认钉在容器右上;立绘台上略微悬出更像挂牌 */
+.pc-sprite-stage .pc-flag { top: calc(var(--pc-u) * -1); right: calc(var(--pc-u2) * -1); }
+
+/* ─────────── 角色详情 ─────────── */
+
+.app-agent-head {
+  display: flex;
+  gap: var(--pc-u4);
+  padding: var(--pc-u4);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.app-agent-head__sprite { flex: none; }
+.app-agent-head__main { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: var(--pc-u2); }
+.app-agent-head__acts { display: flex; flex-direction: column; gap: var(--pc-u2); align-items: stretch; }
+.app-class-desc { margin: 0; color: var(--pc-text); max-width: 60ch; }
+
+.app-cols { display: flex; gap: var(--pc-u4); align-items: flex-start; flex-wrap: wrap; margin-top: var(--pc-u3); }
+.app-col { flex: 1; min-width: 300px; }
+.app-col--wide { flex: 2; min-width: 380px; }
+
+.app-stats { display: flex; flex-wrap: wrap; padding: var(--pc-u3); gap: var(--pc-u3) var(--pc-u4); }
+.app-stat { display: flex; flex-direction: column; gap: 2px; font-size: var(--pc-fs-sm); }
+.app-stat b { font-size: var(--pc-fs-lg); }
+.app-stat--wide { flex-basis: 100%; flex-direction: row; gap: var(--pc-u2); align-items: baseline; }
+
+.app-battle-row {
+  display: flex;
+  gap: var(--pc-u3);
+  padding: var(--pc-u2) var(--pc-u3);
+  border: var(--pc-border) solid var(--pc-line);
+  background: var(--pc-bg-2);
+  margin-bottom: var(--pc-u2);
+  align-items: flex-start;
+}
+.app-battle-row--failed { border-left-color: var(--pc-st-failed); border-left-width: var(--pc-u); }
+.app-battle-row--active { border-left-color: var(--pc-st-working); border-left-width: var(--pc-u); }
+.app-battle-row__st { flex: none; }
+.app-battle-row__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--pc-u); }
+
+/* ─────────── 战役地图 ─────────── */
+
+.app-campaign-head { display: flex; flex-direction: column; gap: var(--pc-u2); margin-bottom: var(--pc-u4); }
+.app-campaign { display: flex; gap: var(--pc-u4); align-items: flex-start; }
+.app-campaign__map { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--pc-u6); }
+.app-node-seq { display: inline-flex; align-items: center; gap: var(--pc-u3); }
+.app-unstaged { border-top: 1px dashed var(--pc-line); padding-top: var(--pc-u4); }
+.app-node--selected { outline: var(--pc-border) solid var(--pc-accent); outline-offset: var(--pc-border); }
+
+.app-project { display: flex; flex-direction: column; gap: var(--pc-u2); padding: var(--pc-u3); }
+.app-project__head { display: flex; align-items: center; gap: var(--pc-u2); }
+.app-project__head h3 { flex: 1; }
+.app-project__icon { font-size: var(--pc-fs-xl); }
+
+.app-questpanel {
+  width: 340px;
+  flex: none;
+  padding: var(--pc-u3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-u3);
+  position: sticky;
+  top: calc(var(--pc-u12) + var(--pc-u4));
+}
+.app-quest-title { margin: 0; color: var(--pc-text-hi); }
+.app-quest-rows { display: flex; flex-direction: column; gap: var(--pc-u2); font-size: var(--pc-fs-sm); }
+.app-hint { margin: 0; font-size: var(--pc-fs-xs); }
+
+.app-legend { display: flex; align-items: center; gap: var(--pc-u2); font-size: var(--pc-fs-xs); flex-wrap: wrap; }
+.app-legend__n {
+  width: var(--pc-u6);
+  height: var(--pc-u6);
+  font-size: var(--pc-fs-xs);
+  cursor: default;
+  margin-left: var(--pc-u2);
+}
+
+/* ─────────── 战斗回放 ─────────── */
+
+.app-replay { padding: var(--pc-u4); }
+.app-replay-meta { margin-bottom: var(--pc-u3); }
+.app-broken { margin-bottom: var(--pc-u3); }
+.app-tl--focus .pc-tl-body { background: var(--pc-bg-2); outline: var(--pc-border) solid var(--pc-line-strong); padding: var(--pc-u2); }
+.app-tl-line--dashed {
+  background: repeating-linear-gradient(to bottom, var(--pc-line) 0 4px, transparent 4px 8px);
+}
+.app-tl-bar { max-width: 240px; }
+
+/* ─────────── 演示菜单 ─────────── */
+
+.app-demo { position: relative; }
+.app-demo summary { list-style: none; cursor: pointer; }
+.app-demo summary::-webkit-details-marker { display: none; }
+.app-demo__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--pc-u2));
+  width: 280px;
+  padding: var(--pc-u3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-u2);
+  z-index: var(--pc-z-toast);
+  font-size: var(--pc-fs-sm);
+}
+.app-demo__menu label { display: flex; align-items: center; gap: var(--pc-u2); cursor: pointer; }
+.app-demo__menu p { margin: 0; font-size: var(--pc-fs-xs); }
+
+/* 桌面优先;窄屏只保证不横向溢出 */
+@media (max-width: 900px) {
+  .app-campaign { flex-direction: column; }
+  .app-questpanel { width: 100%; position: static; }
+}

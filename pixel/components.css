@@ -244,6 +244,11 @@
 .pc-lamp--unknown { --pc-lamp-c: var(--pc-st-unknown); }
 .pc-lamp--unknown::after { inset: 5px; background: var(--pc-lamp-c); }
 
+/* 待接力(契约第七态):下半实心 —— 沙漏里的沙,「派下去了,等它回来」。
+   不闪不动:这不是告警,场景 1 的「卡住」计数不含它 */
+.pc-lamp--waiting { --pc-lamp-c: var(--pc-st-waiting); }
+.pc-lamp--waiting::after { inset: 7px 2px 2px 2px; background: var(--pc-lamp-c); }
+
 @keyframes pc-pulse { 0% { opacity: 1; } 50% { opacity: 0.45; } 100% { opacity: 1; } }
 @keyframes pc-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.25; } }
 
@@ -265,6 +270,27 @@
 .pc-status--failed { color: var(--pc-st-failed); }
 .pc-status--offline { color: var(--pc-st-offline); }
 .pc-status--unknown { color: var(--pc-st-unknown); }
+.pc-status--waiting { color: var(--pc-st-waiting); }
+
+/* ---------------- 角标 ----------------
+   挂在立绘台(.pc-sprite-stage)或卡片角上的小标签。
+   waiting 一期不画第五套姿势,就是靠它把「待接力」和「空闲」拉开的。 */
+
+.pc-flag {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  padding: 0 var(--pc-u);
+  border: var(--pc-border) solid var(--pc-line-strong);
+  background: var(--pc-bg-3);
+  color: var(--pc-text-hi);
+  font-size: var(--pc-fs-xs);
+  line-height: var(--pc-lh-xs);
+  white-space: nowrap;
+  box-shadow: var(--pc-u) var(--pc-u) 0 0 var(--pc-bg-sunken);
+}
+.pc-flag--waiting { border-color: var(--pc-st-waiting); color: var(--pc-st-waiting); }
 
 /* ---------------- 进度条 ----------------
    分段填充,不用平滑渐变 —— 一格一格地长,才是像素风的血条。 */
@@ -414,6 +440,8 @@
   background-image: repeating-linear-gradient(45deg, transparent 0 5px, var(--pc-line) 5px 6px);
 }
 .pc-unit--unknown { border-color: var(--pc-st-unknown); opacity: 0.75; }
+/* 待接力:不压暗(他没闲着),边框用 waiting 色,和空闲的 0.82 透明度拉开 */
+.pc-unit--waiting { border-color: var(--pc-st-waiting); }
 
 /* ---------------- 怪物等级(= issue 优先级) ---------------- */
 

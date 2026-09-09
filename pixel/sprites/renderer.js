@@ -30,6 +30,9 @@ export const STATE_FROM_CONTRACT = {
   fighting: 'working',
   stalled: 'stuck',
   defeated: 'failed',
+  // waiting(待接力)= 策衡定的第七种契约状态:活派下去了,本人在等接力回来。
+  // 一期不画第五套姿势 —— 用空闲立绘,区分靠 .pc-flag--waiting 角标 + waiting 状态灯。
+  waiting: 'idle',
   idle: 'idle',
   offline: 'idle',
   unknown: 'idle',
