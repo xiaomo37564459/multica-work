@@ -40,6 +40,8 @@ export interface RouterDeps {
   tmpDir: string;
   /** 统一「现在」;测试注入假钟。返回 RFC3339 字符串。 */
   now?: () => string;
+  /** 详情页请求到某个 agent 时触发一次装备栏按需拉取(可省;测试不传)。 */
+  onAgentDetail?: (agentId: string) => void;
 }
 
 /** 路由可用的请求抽象:真的来自 IncomingMessage,测试直接给普通对象。 */
@@ -62,8 +64,8 @@ export interface RouterResponse {
 
 export interface Router {
   (req: RouterRequest): Promise<RouterResponse>;
-  /** 把真实 http 对象接上同一个处理函数。 */
-  readonly handle: (req: IncomingMessage, res: ServerResponse) => Promise<void>;
+  /** 把真实 http 对象接上同一个处理函数(body 由调用方先读好,可为 undefined)。 */
+  readonly handle: (req: IncomingMessage, res: ServerResponse, body?: unknown) => Promise<void>;
 }
 
 const UUID_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -136,16 +138,19 @@ export function createRouter(deps: RouterDeps): Router {
     return JSON.parse(raw);
   }
 
-  function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  function route(req: IncomingMessage, res: ServerResponse, body?: unknown): Promise<void> {
     return routeRequest({
       method: req.method ?? 'GET',
       url: req.url ?? '/',
       headers: req.headers,
-      body: undefined,
+      body,
       bodyError: undefined,
-    }).then(async (out) => {
-      const res2 = res as ServerResponse & { __routerOut?: RouterResponse };
-      void res2;
+    }).then((out) => {
+      const status = out.status === 0 ? 500 : out.status;
+      const headers: Record<string, string> = {};
+      for (const [k, v] of out.headers) headers[k] = v;
+      res.writeHead(status, headers);
+      res.end(out.text());
     });
   }
 
@@ -230,6 +235,8 @@ export function createRouter(deps: RouterDeps): Router {
         const agg = buildAggregates({ ...deps.data, now: now() });
         const detail: AgentDetail | undefined = agg.agentDetails.get(id);
         if (!detail) { fail2(404, 'not_found', '没有这个角色'); return out; }
+        // 装备栏是按需档:第一次看详情才拉,拉到后下一轮刷新可见(不阻塞本次应答)。
+        deps.onAgentDetail?.(id);
         ok2(detail);
         return out;
       }

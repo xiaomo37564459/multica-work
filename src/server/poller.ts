@@ -14,7 +14,7 @@
  */
 
 import type {
-  RawAgent, RawIssue, RawProject, RawRuntime, RawRuntimeActivity, RawRuntimeUsage,
+  RawAgent, RawAgentMcp, RawIssue, RawProject, RawRuntime, RawRuntimeActivity, RawRuntimeUsage,
   RawSquad, RawTask,
 } from '../multica/raw.ts';
 import type { MulticaSource } from '../multica/source.ts';
@@ -45,6 +45,8 @@ export class Poller {
   readonly tasks: KeyedCache<RawTask[]>;
   readonly usage: KeyedCache<RawRuntimeUsage[]>;
   readonly activity: KeyedCache<RawRuntimeActivity[]>;
+  /** 装备栏(MCP):详情页要用的那一个 agent 的装备,按需拉取后缓存 10 分钟。 */
+  readonly mcp: KeyedCache<RawAgentMcp[]>;
 
   private readonly cfg: CockpitConfig;
 
@@ -81,6 +83,22 @@ export class Poller {
     this.tasks = new KeyedCache('agent_tasks', MAX_AGE.warm, (agentId) => src.agentTasks(agentId));
     this.usage = new KeyedCache('runtime_usage', MAX_AGE.cold, (id) => src.runtimeUsage(id, cfg.usageWindowDays));
     this.activity = new KeyedCache('runtime_activity', MAX_AGE.cold, (id) => src.runtimeActivity(id));
+    this.mcp = new KeyedCache('agent_mcp', 600_000, (agentId) => src.agentMcp(agentId));
+  }
+
+  /** 详情接口用:该 agent 的装备栏。首次访问会触发一次按需拉取(受并发闸与退避约束)。 */
+  mcpByAgent(): Map<string, RawAgentMcp[]> {
+    const out = new Map<string, RawAgentMcp[]>();
+    for (const id of this.mcp.keys()) {
+      const v = this.mcp.get(id).value;
+      if (v) out.set(id, v);
+    }
+    return out;
+  }
+
+  /** 详情接口用:触发一次装备栏拉取(不等待结果;拉到后下一轮请求可见)。 */
+  requestMcp(agentId: string): void {
+    void this.mcp.refresh(agentId).catch(() => { /* 各格自己记失败 */ });
   }
 
   /** 记下上一轮各角色的状态,供活跃集判定用。 */
@@ -200,7 +218,6 @@ export class Poller {
     if (this.activity.worstFailures() > 0) out.push('runtime_activity');
     return out;
   }
-
   /** 主视图数据的新鲜度以热档为准 —— 那才是 heory 盯的那一格。 */
   freshness(): { fetched_at: string | null; age_ms: number | null; stale: boolean } {
     const s = this.activeIssues.snapshot();

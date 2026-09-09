@@ -4,8 +4,11 @@
  * 一条命令跑起来:`npm start`(= `node src/server/index.ts`)。
  * 零运行时依赖、零构建步骤 —— clone 下来直接跑,不用 npm install。
  *
- * 骨架阶段只有 /api/roster 接真数据(主视图是「看得见」这个第一目标的落点),
- * 其余接口返回 501 not_implemented,但契约已经在 src/contract/types.ts 里定死了。
+ * 本棒(MTM-278)把骨架棒的全部 501 填成真数据:
+ *   - 读:每次请求从轮询缓存拼一份聚合输入(纯内存,不触发 CLI),路由层算好发信封。
+ *   - 写:仅「建 issue / 发评论」两条(guard W1 白名单),长文本走临时文件(W5)。
+ *   - 路由行为(安全闸、错误码、W 系列)抽在 src/server/router.ts,可被单测逐条按住;
+ *     本文件只负责真实依赖的组装与监听。
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -13,16 +16,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import type {
-  ApiEnvelope, ApiError, ApiMeta, BattleState, ErrorCode, Roster,
-} from '../contract/types.ts';
-import { MulticaCli, MulticaCliError } from '../multica/source.ts';
-import { buildRoster } from '../aggregate/roster.ts';
+import { MulticaCli } from '../multica/source.ts';
+import type { AggregatesInput } from '../aggregate/detail.ts';
 import type { DeepLinkConfig } from '../aggregate/normalize.ts';
 import { loadConfig } from './config.ts';
-import { isAllowedHost, isAllowedOrigin, LOOPBACK_HOST } from './guard.ts';
 import { Poller } from './poller.ts';
-import { buildHealth } from './health.ts';
+import { createRouter } from './router.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PKG = JSON.parse(readFileSync(join(HERE, '..', '..', 'package.json'), 'utf8')) as { version?: string };
@@ -38,150 +37,77 @@ const deepLinks: DeepLinkConfig = {
   workspaceSlug: cfg.workspaceSlug,
 };
 
-/* ────────────────────────────── 响应工具 ────────────────────────────── */
-
-function meta(): ApiMeta {
-  const f = poller.freshness();
-  return {
-    fetched_at: f.fetched_at,
-    age_ms: f.age_ms,
-    stale: f.stale,
-    degraded: poller.degradedSources(),
-    server_time: new Date().toISOString(),
-  };
-}
-
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body);
-  res.writeHead(status, {
-    'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'no-store',
-    // 本地页面不需要被别人嵌;顺手把最基本的几条挡掉。
-    'x-content-type-options': 'nosniff',
-    'referrer-policy': 'no-referrer',
-  });
-  res.end(payload);
-}
-
-function ok<T>(res: ServerResponse, data: T): void {
-  sendJson(res, 200, { ok: true, data, meta: meta() } satisfies ApiEnvelope<T>);
-}
-
-function fail(res: ServerResponse, status: number, code: ErrorCode, message: string, retryable = false): void {
-  const error: ApiError = { code, message, retryable };
-  sendJson(res, status, { ok: false, error, meta: meta() } satisfies ApiEnvelope<never>);
-}
-
-/** 骨架里还没实现的接口。契约已定,韩程那一棒照 types.ts 填。 */
-function notImplemented(res: ServerResponse, contractType: string): void {
-  fail(res, 501, 'not_implemented', `骨架阶段未实现。返回结构见 src/contract/types.ts 的 ${contractType}`);
-}
-
-/* ────────────────────────────── 路由 ────────────────────────────── */
-
-function handleRoster(res: ServerResponse): void {
+/** 每次请求时从轮询缓存拼一份聚合输入 —— 全是内存快照读,不触发任何 CLI 调用。 */
+function snapshotInput(): AggregatesInput | null {
   const agents = poller.agents.snapshot().value;
-  if (!agents) {
-    fail(res, 503, 'upstream_failed', '还没拉到角色名单,稍等几秒再试', true);
-    return;
+  // 主视图依赖角色名单;名单还没拉到时统一按「冷启动未就绪」处理,接口应答 503。
+  if (!agents) return null;
+  const runtimes = poller.runtimes.snapshot().value ?? [];
+  const usageByRuntime = new Map<string, NonNullable<ReturnType<Poller['usage']['get']>['value']>>();
+  const activityByRuntime = new Map<string, NonNullable<ReturnType<Poller['activity']['get']>['value']>>();
+  for (const r of runtimes) {
+    const u = poller.usage.get(r.id).value;
+    if (u) usageByRuntime.set(r.id, u);
+    const a = poller.activity.get(r.id).value;
+    if (a) activityByRuntime.set(r.id, a);
   }
-  const roster: Roster = buildRoster({
+  return {
     agents,
-    runtimes: poller.runtimes.snapshot().value ?? [],
+    runtimes,
     tasksByAgent: poller.tasksByAgent(),
     activeIssues: poller.activeIssues.snapshot().value ?? [],
     allIssues: poller.allIssues.snapshot().value ?? [],
+    projects: poller.projects.snapshot().value ?? [],
+    squads: poller.squads.snapshot().value ?? [],
+    mcpByAgent: poller.mcpByAgent(),
+    usageByRuntime,
+    activityByRuntime,
     cfg: deepLinks,
     now: new Date().toISOString(),
-  });
-
-  // 把这一轮的状态回灌给轮询器,下一轮据此挑活跃集。
-  const states = new Map<string, BattleState>(roster.entries.map((e) => [e.agent_id, e.state]));
-  poller.recordStates(states);
-
-  ok(res, roster);
+    usageWindowDays: cfg.usageWindowDays,
+  };
 }
 
-async function handleHealth(res: ServerResponse): Promise<void> {
-  let version: string | null = null;
-  try {
-    version = await cli.version();
-  } catch {
-    version = null;
-  }
-
-  // 注意这里调的是 health() 不是 snapshot():前者根本不含 value。
-  // health 是唯一直连缓存内部状态的接口,业务数据一个字节都不该走这条路(规则 D3)。
-  ok(res, buildHealth({
-    version: PKG.version ?? '0.0.0',
-    bind: `${cfg.host}:${cfg.port}`,
-    cliVersion: version,
-    deepLinkTemplate: cfg.issueUrlTemplate,
-    sources: [
-      { name: 'issue_active', health: poller.activeIssues.health() },
-      { name: 'agent_list', health: poller.agents.health() },
-      { name: 'project_list', health: poller.projects.health() },
-      { name: 'squad_list', health: poller.squads.health() },
-      { name: 'runtime_list', health: poller.runtimes.health() },
-      { name: 'issue_all', health: poller.allIssues.health() },
-    ],
-    now: new Date().toISOString(),
-  }));
-}
-
-async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  // N2 / N3:先过安全闸,再谈业务。
-  if (!isAllowedHost(req.headers.host, cfg.port)) {
-    fail(res, 403, 'forbidden', 'Host 头不是本机地址,拒绝');
-    return;
-  }
-  if (!isAllowedOrigin(req.headers.origin, cfg.port, cfg.devOriginPorts)) {
-    fail(res, 403, 'forbidden', 'Origin 不是本机,拒绝');
-    return;
-  }
-
-  const url = new URL(req.url ?? '/', `http://${LOOPBACK_HOST}:${cfg.port}`);
-  const path = url.pathname.replace(/\/+$/, '') || '/';
-  const method = req.method ?? 'GET';
-
-  if (method === 'GET' && (path === '/' || path === '/api')) {
-    ok(res, {
-      name: 'AetherLab 指挥舱 BFF',
-      note: '骨架阶段。真数据接口:GET /api/roster、GET /api/health',
-      contract: 'src/contract/types.ts',
-    });
-    return;
-  }
-
-  if (method === 'GET' && path === '/api/health') { await handleHealth(res); return; }
-  if (method === 'GET' && path === '/api/roster') { handleRoster(res); return; }
-
-  // 契约已定、骨架未实现的部分 —— 明确 501,不要让前端以为是 404 走错了路。
-  if (method === 'GET' && /^\/api\/agents\/[^/]+$/.test(path)) { notImplemented(res, 'AgentDetail'); return; }
-  if (method === 'GET' && path === '/api/projects') { notImplemented(res, 'ProjectRef[]'); return; }
-  if (method === 'GET' && /^\/api\/projects\/[^/]+\/map$/.test(path)) { notImplemented(res, 'CampaignMap'); return; }
-  if (method === 'GET' && /^\/api\/battles\/[^/]+\/chain$/.test(path)) { notImplemented(res, 'BattleChain'); return; }
-  if (method === 'GET' && path === '/api/runtimes') { notImplemented(res, 'RuntimeVitals[]'); return; }
-  if (method === 'POST' && path === '/api/commands/dispatch') { notImplemented(res, 'DispatchResult'); return; }
-  if (method === 'POST' && path === '/api/commands/shout') { notImplemented(res, 'ShoutResult'); return; }
-
-  fail(res, 404, 'not_found', `没有这个接口:${method} ${path}`);
-}
-
-/* ────────────────────────────── 启动 ────────────────────────────── */
-
-const server = createServer((req, res) => {
-  route(req, res).catch((err: unknown) => {
-    const isCli = err instanceof MulticaCliError;
-    fail(
-      res,
-      isCli ? 502 : 500,
-      isCli ? (err.timedOut ? 'upstream_timeout' : 'upstream_failed') : 'internal',
-      err instanceof Error ? err.message : '服务内部错误',
-      isCli,
-    );
-  });
+/** 逐请求组装一份路由(共享限流器由 createRouter 闭包持有 —— 每进程一份)。 */
+const router = createRouter({
+  cfg,
+  version: PKG.version ?? '0.0.0',
+  get data() {
+    return snapshotInput();
+  },
+  write: cli,
+  tmpDir: process.cwd(),
+  onAgentDetail: (agentId) => poller.requestMcp(agentId),
 });
+
+const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+  // 请求体:只有 POST 会带;先读完再交给路由(路由层负责校验与错误码)。
+  readBody(req)
+    .then((body) => router.handle(req, res, body))
+    .catch((err: unknown) => {
+      res.writeHead(400, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({
+        ok: false,
+        error: { code: 'bad_request', message: `请求体不合法:${err instanceof Error ? err.message : '解析失败'}`, retryable: false },
+        meta: { fetched_at: null, age_ms: null, stale: true, degraded: [], server_time: new Date().toISOString() },
+      }));
+    });
+});
+
+/** 读请求体(≤64KB)。GET/HEAD 没有请求体,直接 undefined。 */
+async function readBody(req: IncomingMessage): Promise<unknown> {
+  if (req.method === 'GET' || req.method === 'HEAD') return undefined;
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const c of req) {
+    size += (c as Buffer).length;
+    if (size > 64 * 1024) throw new Error('请求体超过 64KB');
+    chunks.push(c as Buffer);
+  }
+  const raw = Buffer.concat(chunks).toString('utf8');
+  if (raw.trim() === '') return undefined;
+  return JSON.parse(raw);
+}
 
 async function main(): Promise<void> {
   process.stdout.write('AetherLab 指挥舱 —— 正在拉第一轮数据…\n');
