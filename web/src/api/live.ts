@@ -22,6 +22,23 @@ async function getJson<T>(path: string): Promise<ApiEnvelope<T>> {
   }
 }
 
+async function postJson<T>(path: string, body: unknown): Promise<ApiEnvelope<T>> {
+  try {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return (await res.json()) as ApiEnvelope<T>;
+  } catch {
+    return {
+      ok: false,
+      error: { code: 'upstream_failed', message: '连不上本机 BFF,这条写操作没有送达', retryable: true },
+      meta: { fetched_at: null, age_ms: null, stale: true, degraded: [], server_time: new Date().toISOString() },
+    };
+  }
+}
+
 export function createLiveApi(): CockpitApi {
   return {
     source: 'live',
@@ -31,5 +48,8 @@ export function createLiveApi(): CockpitApi {
     projects: () => getJson('/api/projects'),
     campaign: (id) => getJson(`/api/projects/${encodeURIComponent(id)}/map`),
     chain: (taskId) => getJson(`/api/battles/${encodeURIComponent(taskId)}/chain`),
+    issueBattles: (issueId) => getJson(`/api/issues/${encodeURIComponent(issueId)}/battles`),
+    dispatch: (req) => postJson('/api/commands/dispatch', req),
+    shout: (req) => postJson('/api/commands/shout', req),
   };
 }

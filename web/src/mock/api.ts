@@ -69,5 +69,16 @@ export function createMockApi(opts: MockApiOptions = {}): MockCockpitApi {
     projects: () => wrap(() => world.projects(), '拉不到项目列表'),
     campaign: (id) => wrap(() => world.campaign(id), '没有这个战役(项目不存在)'),
     chain: (taskId) => wrap(() => world.chain(taskId), '没有这场战斗的记录'),
+    issueBattles: () => notImplemented('按 issue 查战斗归真后端(MTM-278),mock 模式不提供'),
+    dispatch: () => notImplemented('派活是真实写操作,mock 模式不提供 —— 切到「实时数据」再用'),
+    shout: () => notImplemented('喊话是真实写操作,mock 模式不提供 —— 切到「实时数据」再用'),
   };
+
+  function notImplemented<T>(message: string): Promise<ApiEnvelope<T>> {
+    return sleep().then(() => ({
+      ok: false as const,
+      error: { code: 'not_implemented' as const, message, retryable: false },
+      meta: meta(),
+    }));
+  }
 }

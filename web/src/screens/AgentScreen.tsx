@@ -7,6 +7,7 @@
  *   - battles_loaded=false:整块骨架,不出现假数字
  * 「喊话」入口留位置(disabled),写操作归下一棒 MTM-278。
  */
+import { useState } from 'react';
 import type { Battle } from '@contract';
 import type { CockpitApi } from '../api/api.ts';
 import { usePoll } from '../lib/usePoll.ts';
@@ -15,6 +16,7 @@ import { elapsedOf, fmtAgo, fmtDuration, fmtPercent } from '../lib/format.ts';
 import { battleStatusUi, failureKindLabel, stateUi } from '../lib/states.ts';
 import { DeepLink, ErrorBox, SkelLine, Sprite, StatePill } from '../components/bits.tsx';
 import { StatusBanner } from '../components/StatusBanner.tsx';
+import { ShoutModal } from '../components/ShoutModal.tsx';
 
 function BattleRow(props: { b: Battle; serverTime: string }) {
   const { b, serverTime } = props;
@@ -57,6 +59,8 @@ function BattleRow(props: { b: Battle; serverTime: string }) {
 export function AgentScreen(props: { api: CockpitApi; agentId: string; pollMs?: number }) {
   const { api, agentId, pollMs = 5000 } = props;
   const { data, meta, error, loading, refresh } = usePoll(() => api.agent(agentId), pollMs, `agent:${agentId}`);
+  const [shoutTarget, setShoutTarget] = useState<{ issueId: string; label: string } | null>(null);
+  const [shouted, setShouted] = useState<string | null>(null);
 
   if (loading) return <div className="pc-empty" aria-busy="true">正在调阅档案…</div>;
   if (!data) {
@@ -65,6 +69,18 @@ export function AgentScreen(props: { api: CockpitApi; agentId: string; pollMs?: 
 
   const serverTime = meta?.server_time ?? new Date().toISOString();
   const ui = stateUi(data.state);
+  // 喊话落点:优先当前正在打的 issue,其次名下最近一场带 issue 的战斗;都没有则喊话不可用。
+  const shoutableBattles = ((): { issueId: string; label: string } | null => {
+    const withIssue = (list: Battle[]) => list.find((b) => b.issue?.issue_id);
+    const hit = withIssue(data.current_battles)
+      ?? withIssue(data.recent_battles)
+      ?? (data.last_battle?.issue?.issue_id ? data.last_battle : null);
+    if (!hit?.issue) return null;
+    return {
+      issueId: hit.issue.issue_id,
+      label: `${hit.issue.identifier ?? ''} ${hit.issue.title ?? ''}`.trim(),
+    };
+  })();
 
   return (
     <section>
@@ -91,10 +107,15 @@ export function AgentScreen(props: { api: CockpitApi; agentId: string; pollMs?: 
         </div>
         <div className="app-agent-head__acts">
           <button
-            type="button"
+            type="button" data-shout-open
             className="pc-btn pc-btn--sm"
-            disabled
-            title="对阵中角色喊一句话(落为 issue 评论并唤醒)是写操作,归下一棒 MTM-278 —— 入口先留在这"
+            disabled={api.source !== 'live' || !shoutableBattles}
+            onClick={() => shoutableBattles && setShoutTarget(shoutableBattles)}
+            title={api.source !== 'live'
+              ? '喊话是真实写操作,mock 演示数据下禁用 —— 点顶栏「切真数据」后再用'
+              : shoutableBattles
+                ? `对阵中角色喊一句话(落为 issue 评论并唤醒 ${data.display_name})—— 提交前有确认页`
+                : '该角色当前没有进行中的任务,喊话没有落点 —— 有 issue 在身时才能喊'}
           >
             📣 喊话
           </button>
@@ -167,6 +188,26 @@ export function AgentScreen(props: { api: CockpitApi; agentId: string; pollMs?: 
           {data.battles_loaded && data.recent_battles.map((b) => <BattleRow key={b.task_id} b={b} serverTime={serverTime} />)}
         </div>
       </div>
+
+      {shouted && (
+        <div className="app-banner app-banner--warn" role="status" data-shout-done>
+          ✓ 已送达:{shouted} —— 阵地上的 {data.display_name} 正在被唤醒
+          <button type="button" className="pc-btn pc-btn--sm pc-btn--ghost" onClick={() => setShouted(null)}>知道了</button>
+        </div>
+      )}
+
+      {shoutTarget && (
+        <ShoutModal
+          issueId={shoutTarget.issueId}
+          issueLabel={shoutTarget.label}
+          shout={api.shout}
+          onClose={() => setShoutTarget(null)}
+          onDone={(r) => {
+            setShoutTarget(null);
+            setShouted(r.comment_id);
+          }}
+        />
+      )}
 
     </section>
   );
