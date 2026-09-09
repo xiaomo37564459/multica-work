@@ -343,6 +343,8 @@ export interface MockWorld {
   projects(): ProjectRef[];
   campaign(projectId: string): CampaignMap | null;
   chain(taskId: string): BattleChain | null;
+  /** 按 issue 查战斗(mock 世界里战斗本来就挂在关卡上,直接过滤)。 */
+  issueBattles(issueId: string): Battle[];
   /** 重新演一遍「战绩加载中」相位(演示用)。 */
   resetLoading(): void;
 }
@@ -584,12 +586,19 @@ export function createWorld(now: () => number = Date.now): MockWorld {
     } satisfies BattleChain;
   }
 
+  function issueBattles(issueId: string): Battle[] {
+    return BATTLES
+      .filter((b) => b.issue && uid(b.issue) === issueId)
+      .map(materialize);
+  }
+
   return {
     roster: buildRoster,
     agent: agentDetail,
     projects: projectRefs,
     campaign,
     chain,
+    issueBattles,
     resetLoading: () => { loadStart = now(); },
   };
 }
