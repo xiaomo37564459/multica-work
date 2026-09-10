@@ -1,26 +1,34 @@
-# 指挥舱前端(初版,MTM-277)
+# 指挥舱前端
 
-五屏能点能走的前端初版:主视图 / 角色详情 / 战役列表+地图 / 战斗回放 / 全站跳回本体。
-**默认吃 mock 数据**(结构严格等于 `../src/contract/types.ts` 的契约),加 `?source=live` 切到真 BFF。
+五屏:主视图 / 角色详情 / 战役列表+地图 / 战斗回放 / 全站跳回本体。
 产品口径、功能定义、交互逻辑、待后端配合项 → 同目录 `PRODUCT.md`。
 
-## 跑起来(照着做就能跑)
+## 平时用它:不用进这个目录
+
+在**仓库根**跑 `npm start`,打开 `http://127.0.0.1:4780/` 就是完整的指挥舱 ——
+BFF 自己把构建产物端出去,界面和接口同源同端口,**默认真数据**。
+改了 `web/` 下的东西,下次 `npm start` 会自动重新构建。
+
+## 改界面时:开发服(热更新)
 
 ```bash
-# 1. 装依赖(只有前端需要装;仓库根的 BFF 仍是零依赖)
 cd web
 npm install
-
-# 2. 启动
-npm run dev
-
-# 3. 打开
-#    http://localhost:5173/        ← 默认 mock 演示数据,开箱即看
-#    http://localhost:5173/?source=live   ← 切真数据(要先在仓库根 npm start 起 BFF;
-#                                            /api/roster 是真数据,其余接口 501 有专门说明态)
+npm run dev          # → http://localhost:5173/
 ```
 
+开发服**默认吃 mock 演示数据**(结构严格等于 `../src/contract/types.ts` 的契约)——
+调样式、走查状态形态时不打真接口,也不会误触发写操作。
+
+要在开发服上打真数据:`http://localhost:5173/?source=live`,并且 BFF 那边得放行 Vite 的端口
+(`COCKPIT_DEV_ORIGIN_PORTS=5173 npm start`)—— 5173 和 4780 是跨源,默认一个都不放行。
+
 不需要测试账号 —— 本地单用户工具,没有登录。
+
+**默认值是怎么定的**(`src/api/api.ts` 的 `pickSource`):
+`?source=` > `localStorage.cockpit_source` > 兜底值;兜底值由构建产物还是开发服决定
+(`import.meta.env.PROD`)。一个「看全队在干嘛」的工具默认给假数据,
+会让人拿假状态做真决定 —— 所以端出去的那一份必须默认真。
 
 **mock 里能走查到什么**(演给验收看的形态,一个不缺):
 七种状态齐全(战斗/卡住/失败/待接力/空闲/离线/未知)、开机头 6 秒的「战绩加载中」骨架屏、
@@ -31,10 +39,12 @@ deep_link 为 null 时按钮消失(内置助手)。顶栏「演示」菜单可�
 ## 测试怎么跑
 
 ```bash
-npm test          # vitest,76 条:状态语义 / 时间口径 / mock 契约行为 / 五屏关键交互
+npm test          # vitest,97 条:状态语义 / 时间口径 / 轮询稳态 / mock 契约行为 / 五屏关键交互
 npm run typecheck # tsc:mock 结构全部 satisfies 契约类型 —— 这条就是「逐字段核契约」
 npm run build     # 产物在 web/dist(已 gitignore)
 ```
+
+端到端的五场景冒烟不在这里,在仓库根的 `e2e/`(Playwright,打真服务)。
 
 > **测试文件必须叫 `*.test.tsx`(哪怕没有 JSX),也不许放进名为 `test` 的目录。**
 > 仓库根的 `npm test` 是裸 `node --test` 全仓库自动发现(MTM-280 的设计),
@@ -48,7 +58,7 @@ web/
 ├─ src/
 │  ├─ api/         数据源接口 + live 实现(打 /api/*,Vite 代理到 127.0.0.1:4780)
 │  ├─ mock/        mock 世界(契约形状的小系统:会走时间、有加载相位)+ mock 数据源
-│  ├─ lib/         states(七态→界面语义唯一映射)/ format(时间口径)/ usePoll(轮询)
+│  ├─ lib/         states(七态→界面语义唯一映射)/ format(时间口径)/ usePoll(轮询,含稳态测试)
 │  ├─ components/  bits(立绘/灯/角标/跳回)/ UnitCard(角色卡)/ StatusBanner
 │  ├─ screens/     五屏:Roster / Agent / Projects / Campaign / Replay
 │  └─ router.ts    迷你 hash 路由(#/、#/agents/:id、#/projects[/:id]、#/battles/:taskId)
