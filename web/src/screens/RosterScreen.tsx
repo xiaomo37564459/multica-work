@@ -6,7 +6,7 @@
  *   2. 卡片按注意力排序:失败 > 卡住 > 战斗 > 待接力 > 未知 > 空闲 > 离线
  *   3. 状态不靠读字:边框色 + 状态灯形状 + 立绘姿势三层冗余(苏绘的皮肤保证)
  *
- * 「派活」入口这一棒只留位置(disabled):写操作归下一棒 MTM-278。
+ * 顶栏「派活」是真实写操作(MTM-278 接通):点开是两段式确认,mock 模式下禁用。
  */
 import { useEffect, useState } from 'react';
 import type { CockpitApi } from '../api/api.ts';

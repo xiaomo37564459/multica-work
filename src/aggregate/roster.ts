@@ -39,9 +39,12 @@ export interface RosterInput {
   /** 当前 status_category 属于 in_progress / blocked 的 issue。 */
   activeIssues: readonly RawIssue[];
   /**
-   * 全量 issue(冷档 issue_all 缓存)。**只用来数子任务**,不进主视图。
-   * 为什么必须要它:判「待接力」得看子任务活没活,而活着的子任务包含 todo / in_review,
-   * 这两种不在热档 issue_active 里。传空数组不会报错,但持有父 issue 的人会被误判成卡住。
+   * 全量 issue(冷档 issue_all 缓存)。两个用途:
+   *   1. 数子任务:判「待接力」得看子任务活没活,而活着的子任务包含 todo / in_review,
+   *      这两种不在热档 issue_active 里。
+   *   2. 认关卡的名字:战斗打的那只怪可能已经完成/取消/还没出击,一样不在热档里。
+   *      少了它,主视图上那一行关卡名就只剩一个「–」(MTM-279 走查实测)。
+   * 传空数组不会报错,但持有父 issue 的人会被误判成卡住,关卡名也会大面积变「–」。
    */
   allIssues: readonly RawIssue[];
   cfg: DeepLinkConfig;
@@ -54,7 +57,9 @@ export function buildRoster(input: RosterInput): Roster {
 
   const runtimeById = new Map(runtimes.map((r) => [r.id, r]));
   const agentIds = new Set(agents.map((a) => a.id));
-  const issuesById = new Map(activeIssues.map((i) => [i.id, i]));
+  // 冷档在前、热档在后:名字靠全量兜底,状态以热档(3 秒一刷)那份为准。
+  // 顺序反了的话,主视图会拿 300 秒前的状态去画状态角标。
+  const issuesById = new Map([...allIssues, ...activeIssues].map((i) => [i.id, i]));
 
   const knownTaskIds = new Set<string>();
   for (const tasks of tasksByAgent.values()) {

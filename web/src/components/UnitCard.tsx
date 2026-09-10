@@ -99,8 +99,16 @@ export function UnitCard(props: { entry: RosterEntry; serverTime: string }) {
           {e.battles_loaded && e.state === 'fighting' &&
             e.current_battles.map((b) => <CurrentBattle key={b.task_id} b={b} serverTime={serverTime} />)}
 
-          {e.battles_loaded && (e.state === 'stalled' || e.state === 'defeated') && e.last_battle && (
-            <LastFailure b={e.last_battle} exhausted={e.state === 'defeated'} />
+          {/*
+            卡住 / 失败:先分清「上一战真输了」和「有活在身却没在跑」。
+            以前这里不分,一律套失败模板 —— 于是上一战明明赢了的人,卡上写着
+            「第 1/2 次失败,还会自动重试」(MTM-279 走查实测撞见两张)。
+            编一个没发生过的失败,比什么都不写更糟:人会照着假信息去处置。
+          */}
+          {e.battles_loaded && (e.state === 'stalled' || e.state === 'defeated') && (
+            e.last_battle?.status === 'lost'
+              ? <LastFailure b={e.last_battle} exhausted={e.state === 'defeated'} />
+              : <div className="app-battle"><div className="pc-dim">{e.state_reason}</div></div>
           )}
 
           {e.battles_loaded && e.state === 'waiting' && (

@@ -4,8 +4,8 @@
  * 两条契约红线:
  *   - unstaged 不是边角料(实测 254 条里 142 条不分关),给它正经一层
  *   - 点关卡 → 侧栏详情:状态 / 等级 / 出击角色 / 跳回本体。
- *     「按关卡直接开战斗回放」需要 issue→task 的查询,一期契约没有 —— 侧栏引导去
- *     出击角色详情(那里每场战斗都有回放入口),缺口记在 PRODUCT.md 待后端配合项。
+ *     「按关卡直接开战斗回放」靠 MTM-278 补的 `GET /api/issues/:id/battles`(B 案,沈执拍板):
+ *     侧栏按需查这条,查到就直接给回放入口,查不到才引导去出击角色详情。
  */
 import { useState } from 'react';
 import type { Battle, QuestNode } from '@contract';

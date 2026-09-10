@@ -5,7 +5,7 @@
  *   - stats.mana 一期恒 null:写明「拆不到人头」,不是画 0
  *   - equipment 实测全空:空装备栏是一个正经状态,不是 bug
  *   - battles_loaded=false:整块骨架,不出现假数字
- * 「喊话」入口留位置(disabled),写操作归下一棒 MTM-278。
+ * 「喊话」是真实写操作(MTM-278 接通):瞄准该角色当前阵地,两段式确认,mock 模式下禁用。
  */
 import { useState } from 'react';
 import type { Battle } from '@contract';

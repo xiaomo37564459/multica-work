@@ -110,6 +110,60 @@ export interface MulticaWriteSource {
  */
 export const DEFAULT_MAX_CONCURRENCY = 4;
 
+/**
+ * 这次失败是不是超时。
+ *
+ * Node 的 `execFile` 超时之后**发 SIGTERM 杀掉子进程**,回调里是
+ * `killed === true` / `signal === 'SIGTERM'` / `code === null`。
+ * 老写法拿 `/killed/i` 去比 signal 字符串 —— 只有 SIGKILL 能撞上,SIGTERM 永远撞不上,
+ * 于是每一次 15 秒超时都被当成普通失败(MTM-279 压测实测抓到)。后果有两个:
+ * 错误消息里没有「超时」两个字,查的人想不到该去调 `COCKPIT_CLI_TIMEOUT_MS`;
+ * 写操作超时会应答 502 而不是契约定的 504。
+ *
+ * 本仓库任何地方都不主动 kill 子进程,所以 `killed === true` 只可能来自超时。
+ */
+export function isTimeout(err: { code?: number | string | null; signal?: string | null; killed?: boolean }): boolean {
+  return err.code === 'ETIMEDOUT' || err.killed === true;
+}
+
+/** describeCliFailure 的输入:一次失败调用留下的全部线索。 */
+export interface CliFailureFacts {
+  timedOut: boolean;
+  /** 进程退出码;被信号打死或根本没起来时为 null。 */
+  code: number | null;
+  signal: string | null;
+  stderr: string;
+}
+
+/**
+ * 把一次 CLI 失败描述成一句能查下去的话。
+ *
+ * 为什么单拎出来:这句话会原样进 `/api/health` 的 `last_error`,是半夜出事时
+ * 唯一的第一手线索。MTM-279 压测时抓到的那句是「multica agent tasks 调用失败」——
+ * 没有退出码、没有信号、没有 stderr,拿着它什么都查不下去。
+ *
+ * 两条规矩:
+ *   - 有什么线索写什么;一条都没有就明说「没有留下」,不含糊过去。
+ *   - **只写命令名(前两个 argv),不写参数值** —— 参数里全是 UUID,
+ *     而这句话会被 `/api/health` 长期持有(docs/security.md 规则 D3 的同一条思路)。
+ */
+export function describeCliFailure(
+  argv: readonly string[],
+  facts: CliFailureFacts,
+  timeoutMs: number,
+): string {
+  const cmd = `multica ${argv[0] ?? ''} ${argv[1] ?? ''}`.trim();
+  const clues: string[] = [];
+  if (facts.timedOut) clues.push(`超时(阈值 ${timeoutMs}ms)`);
+  if (facts.code != null) clues.push(`退出码 ${facts.code}`);
+  if (facts.signal) clues.push(`收到信号 ${facts.signal}`);
+  // stderr 可能带上下文,但也可能带 issue 正文片段,截断后再拼。
+  const detail = facts.stderr.trim().slice(0, 300);
+  if (detail) clues.push(`stderr: ${detail}`);
+  if (clues.length === 0) clues.push('进程异常结束,没有留下退出码、信号或 stderr');
+  return `${cmd} 调用失败 —— ${clues.join(';')}`;
+}
+
 class Semaphore {
   private active = 0;
   private queue: Array<() => void> = [];
@@ -176,12 +230,16 @@ export class MulticaCli implements MulticaSource, MulticaWriteSource {
               const ms = Date.now() - started;
               if (err) {
                 this.onCall?.(argv, ms, false);
-                const timedOut = (err as NodeJS.ErrnoException).code === 'ETIMEDOUT'
-                  || /killed/i.test(String((err as { signal?: string }).signal ?? ''));
-                // stderr 可能带上下文,但也可能带 issue 正文片段,截断后再抛。
-                const detail = String(stderr ?? '').trim().slice(0, 400);
+                const e = err as NodeJS.ErrnoException & { code?: number | string; signal?: string; killed?: boolean };
+                const signal = e.signal ?? null;
+                const timedOut = isTimeout(e);
                 reject(new MulticaCliError(
-                  `multica ${argv[0] ?? ''} ${argv[1] ?? ''} 调用失败${timedOut ? '(超时)' : ''}${detail ? `: ${detail}` : ''}`,
+                  describeCliFailure(argv, {
+                    timedOut,
+                    code: typeof e.code === 'number' ? e.code : null,
+                    signal,
+                    stderr: String(stderr ?? ''),
+                  }, this.timeoutMs),
                   argv,
                   timedOut,
                 ));

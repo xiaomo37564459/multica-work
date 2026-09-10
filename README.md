@@ -3,7 +3,7 @@
 跑在自己机器上的智能体工作中心。13 个智能体像游戏角色一样列阵:谁在打怪、打哪只、打了多久、失败几次,
 打开页面一眼看清;还能在页面里直接派活、对阵中的角色喊话。
 
-当前是**地基阶段** —— 后端骨架 + 数据契约已就位,界面还没开始做。
+一期已收口:五屏跑真数据,派活/喊话是真实写操作。
 
 ## 装什么
 
@@ -14,9 +14,11 @@ node --version      # 应该 >= v22.18
 multica version     # 应该能打印版本号
 ```
 
-服务**没有任何运行时依赖**,不需要 `npm install`。
+不用先 `npm install` —— 界面的依赖 `npm start` 自己会装。
 
 ## 一条命令跑起来
+
+克隆下来,在仓库根敲:
 
 ```bash
 npm start
@@ -25,14 +27,21 @@ npm start
 看到这两行就是好了:
 
 ```
-指挥舱已就绪 → http://127.0.0.1:4780/api/roster
+指挥舱已就绪 → http://127.0.0.1:4780/
 自检 → http://127.0.0.1:4780/api/health
 ```
 
-浏览器打开 `http://127.0.0.1:4780/api/roster`,应该看到全队 13 个人的实时状态。
-实测冷启动 **1.2 秒**拿到完整名单,再过几秒战绩补齐。
+**浏览器打开 `http://127.0.0.1:4780/`** —— 界面和接口是同一个端口,不用再单独起前端。
+顶栏应该显示「● 实时数据」,底下是全队 13 个人。
 
-想换端口:`COCKPIT_PORT=4791 npm start`。
+第一次跑会多花十几秒装前端依赖并构建一次界面(会打印「界面还没构建过,构建一次」);
+之后每次启动都跳过,只有改了 `web/`、`pixel/` 或契约才会重新构建。
+
+实测冷启动(安静环境,5 次):**中位 1.8 秒 / 最坏 3.5 秒**看到全队名单,
+再过 20~35 秒全员战绩补齐(在那之前个别人是「战绩加载中」骨架屏,不是坏了)。
+已经开着的时候,浏览器打开到看清全队 **< 1 秒**。数字怎么测的见 `docs/polling.md`。
+
+想换端口:`COCKPIT_PORT=4791 npm start`。端口被占会直接告诉你被占了,不甩报错栈。
 
 > **服务只监听 127.0.0.1,而且没有改成对外监听的开关。**
 > 它握着能指挥全队的凭据,理由和全部安全规则见 `docs/security.md`。
@@ -40,13 +49,19 @@ npm start
 ## 别的命令
 
 ```bash
-npm test          # 全仓库单测(163 条),不需要 npm install
+npm test          # 全仓库单测(171 条),不需要 npm install
 npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependency)
+npm run build:web # 强制重新构建界面(平时不用,npm start 会自动判断)
+npm run start:api # 只起接口不带界面:零构建、零依赖,给脚本 curl 用
 ```
 
-**前端界面**(五屏初版,默认 mock 数据):`cd web && npm install && npm run dev`
-→ 打开 `http://localhost:5173/`。前端自己的 76 条测试用 vitest 跑(`cd web && npm test`),
-不在上面 122 条里 —— 命名与两套 runner 的分界规则见下一节和 `web/README.md`。
+**改界面**(热更新)用 `cd web && npm install && npm run dev` → `http://localhost:5173/`。
+开发服默认吃 mock 演示数据(改样式不打真接口),`?source=live` 切真数据 ——
+要走 Vite 代理打 BFF,得先 `COCKPIT_DEV_ORIGIN_PORTS=5173 npm start`。
+前端自己的 97 条测试用 vitest 跑(`cd web && npm test`),不在上面 171 条里。
+
+**主流程冒烟**(五个关键场景端到端):`cd e2e && npm install && npm run install-browser && npm run smoke`。
+跑法和覆盖范围见 `e2e/README.md`。
 
 > Node 只擦类型不检查类型 —— **`npm run typecheck` 不跑就等于没有契约约束**,验收和 CI 都要跑这条。
 
@@ -58,7 +73,7 @@ npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependenc
 这是刻意的。MTM-280 之前脚本里写死了一条只覆盖 `test/` 的 glob,`pixel/tests/` 的 27 条一条都没跑到,
 屏幕上却是「93 全绿」,**没有任何报错**。测试挂了会被看见,测试不跑不会 —— 这类故障最贵。
 
-**上面那个 163 是全仓库总数**(骨架棒 122 + MTM-278 新增 41),不是某个目录的数。
+**上面那个 171 是全仓库总数**(骨架棒 122 + MTM-278 新增 41 + MTM-279 新增 8),不是某个目录的数。
 新增测试后请把这个数字改掉;数字只是给人对账用的,真正兜底的是下面这条:
 
 - **测试文件必须叫 `xxx.test.js` / `xxx.test.ts`**,或者放在名为 `test` 的目录里。
@@ -68,12 +83,14 @@ npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependenc
 
 两个用得上的细节:
 `node --test <目录>` 在 Node 24 上是坏的(会被当成模块去 require),要单跑某个目录得写 glob,
-例如 `node --test "pixel/tests/*.test.js"`;另外 `node --test` 不看 `.gitignore`,本地构建过前端之后
-`dist/` 里的产物也会被扫(干净克隆和 CI 没这问题,`dist/` 不进仓库)。
+例如 `node --test "pixel/tests/*.test.js"`;另外 `node --test` 不看 `.gitignore`,而 `npm start`
+现在会自动生成 `web/dist`,所以本地几乎总是有产物在。实测无害(vite 打出来的是两个 assets,
+里面没有 `*.test.js`),但往 `dist/` 里塞测试文件这条路是不通的。
 
-**web/ 是另一个 runner 的地盘**:前端测试归 vitest,文件一律 `*.test.tsx`(哪怕没有 JSX),
-且不放进名为 `test` 的目录 —— `.tsx` 不在 `node --test` 的发现规则里,两套 runner 才不会抢同一个文件
-(`.test.ts` 会被根上的 `npm test` 扫走然后当场跑红,MTM-277 实测过)。规则详见 `web/README.md`。
+**web/ 和 e2e/ 是另外两个 runner 的地盘**:前端单测归 vitest,文件一律 `*.test.tsx`(哪怕没有 JSX),
+且不放进名为 `test` 的目录;e2e 冒烟归 playwright,文件一律 `*.spec.ts`。
+`.tsx` 和 `.spec.` 都不在 `node --test` 的发现规则里,三套 runner 才不会抢同一个文件
+(`.test.ts` 会被根上的 `npm test` 扫走然后当场跑红,MTM-277 实测过)。规则详见 `web/README.md` 和 `e2e/README.md`。
 
 ## 现在能用什么
 
@@ -145,8 +162,12 @@ src/
    ├─ guard.ts         安全闸 + 入参校验
    ├─ poller.ts        分档轮询
    ├─ router.ts        HTTP 路由(安全闸 + 全部接口 + 写操作,MTM-278)
+   ├─ static.ts        把 web/dist 端出去 —— 界面与接口同源同端口(MTM-279)
    ├─ health.ts        /api/health 响应组装
    └─ index.ts         HTTP 入口
+scripts/
+├─ start.ts            `npm start` 的入口:该构建就构建,然后起服务
+└─ build-web.ts        按 mtime 判断界面要不要重新构建
 docs/
 ├─ architecture.md     技术栈选型、模块边界、谁能碰谁
 ├─ data-contract.md    契约的人话版(为什么这么定)
@@ -154,7 +175,8 @@ docs/
 ├─ polling.md          轮询与限流策略 + 实测数字
 └─ security.md         本地安全边界,逐条编号可 review
 pixel/                 像素资产:立绘 + UI 皮肤(零依赖 ES 模块,自带 package.json 和 tests/)
-web/                   前端五屏初版(React+Vite,默认 mock 数据;跑法见 web/README.md)
+web/                   前端五屏(React+Vite;BFF 端出来时默认真数据,跑法见 web/README.md)
+e2e/                   五场景主流程冒烟(Playwright,自带 package.json;跑法见 e2e/README.md)
 ```
 
 ## 从哪儿开始读
@@ -164,3 +186,4 @@ web/                   前端五屏初版(React+Vite,默认 mock 数据;跑法�
 - **要写界面** → `docs/data-contract.md`,重点看「全局约定」和几个必须画出来的状态。
 - **觉得刷新慢** → `docs/polling.md`,里面有全部实测数字和该调哪个旋钮。
 - **审安全** → `docs/security.md`,规则都编了号,末尾有复核清单。
+- **想确认主流程没坏** → `cd e2e && npm run smoke`,五个关键场景跑一遍就知道。

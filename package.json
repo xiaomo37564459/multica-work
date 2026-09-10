@@ -8,7 +8,9 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "start": "node src/server/index.ts",
+    "start": "node scripts/start.ts",
+    "start:api": "node src/server/index.ts",
+    "build:web": "node scripts/build-web.ts",
     "test": "node --test",
     "typecheck": "tsc --noEmit"
   },

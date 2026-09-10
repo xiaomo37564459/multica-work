@@ -182,6 +182,33 @@ export class KeyedCache<T> {
     for (const c of this.cells.values()) worst = Math.max(worst, c.snapshot().consecutive_failures);
     return worst;
   }
+
+  /**
+   * 把所有分片汇总成一行健康度,给 `/api/health` 用。
+   *
+   * 一律取**最差**的那一片:失败次数取最大、年龄取最旧、错误取失败次数最多那片的原文。
+   * 取平均或取最好的都会把故障藏起来 —— 13 个人里挂了 1 个,平均值看着还挺健康,
+   * 而界面那边黄条已经挂上了。自检接口和黄条必须说同一件事。
+   *
+   * 只有元数据,没有 value —— 和 CacheCell.health() 同一条规矩(docs/security.md 规则 D3)。
+   */
+  worstHealth(): CacheHealth {
+    let worst: CacheHealth | null = null;
+    for (const c of this.cells.values()) {
+      const h = c.health();
+      if (worst == null) { worst = h; continue; }
+      worst = {
+        // 年龄:null(从没拉到)最差,其次是数值最大的
+        fetched_at: h.age_ms == null ? h.fetched_at : (worst.age_ms == null ? worst.fetched_at : (h.age_ms > worst.age_ms ? h.fetched_at : worst.fetched_at)),
+        age_ms: h.age_ms == null || worst.age_ms == null ? null : Math.max(h.age_ms, worst.age_ms),
+        stale: h.stale || worst.stale,
+        consecutive_failures: Math.max(h.consecutive_failures, worst.consecutive_failures),
+        last_error: h.consecutive_failures > worst.consecutive_failures ? h.last_error : (worst.last_error ?? h.last_error),
+      };
+    }
+    // 一片都没有 = 从没拉过。报「不知道」,不报健康。
+    return worst ?? { fetched_at: null, age_ms: null, stale: true, consecutive_failures: 0, last_error: null };
+  }
 }
 
 /**

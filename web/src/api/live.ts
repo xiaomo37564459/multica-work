@@ -1,9 +1,12 @@
 /**
- * 真数据源 —— 打本机 BFF(开发期由 Vite 代理到 http://127.0.0.1:4780)。
+ * 真数据源 —— 打本机 BFF。
  *
- * 这一棒里它是「对照组」:/api/roster 已是真数据,其余接口 BFF 返回
- * 501 not_implemented(注意不是 404,契约就是这么定的)—— 界面对 501 画
- * 「下一棒接入」的说明态,而不是报错,这样切到 live 也是一个能看的产品。
+ * 两种接法,路径一模一样(`/api/*`),差别只在谁来端这个页面:
+ *   - `npm start` 端出来的构建产物:同源直连 127.0.0.1:4780,**这是默认那一份**
+ *   - Vite 开发服(5173):由 vite.config.ts 的 proxy 转到 4780
+ *
+ * 读接口全部真数据,写接口只有派活/喊话两条(MTM-278 起 501 已全部填掉)。
+ * 这里只兜「连不上 / 不是 JSON」;BFF 自己的失败也走信封(ok:false),直接透传给界面。
  */
 import type { ApiEnvelope } from '@contract';
 import type { CockpitApi } from './api.ts';
