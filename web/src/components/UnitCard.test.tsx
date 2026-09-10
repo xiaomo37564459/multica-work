@@ -86,7 +86,6 @@ describe('UnitCard', () => {
       state_reason: '名下有 1 条进行中的任务,但没有在跑的战斗',
       battles_loaded: true,
       current_battles: [],
-      recent_failure: null,
       ...over,
     });
 

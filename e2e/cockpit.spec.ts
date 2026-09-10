@@ -24,12 +24,18 @@ async function api<T>(request: APIRequestContext, path: string): Promise<T> {
   return env.data;
 }
 
+interface Battle {
+  task_id: string;
+  status: string;
+  issue: { issue_id: string; identifier: string | null } | null;
+}
+
 interface RosterEntry {
   agent_id: string;
   display_name: string;
   state: string;
-  current_battles: Array<{ task_id: string; issue: { issue_id: string } | null }>;
-  recent_failure: { task_id: string } | null;
+  current_battles: Battle[];
+  last_battle: Battle | null;
 }
 
 async function roster(request: APIRequestContext) {
@@ -181,8 +187,9 @@ test.describe('场景 4 —— 点项目看战役地图', () => {
 test.describe('场景 5 —— 复盘一场战斗,接力链按时间轴展开', () => {
   test('回放里能看到接力链的每一棒', async ({ page, request }) => {
     const data = await roster(request);
-    const withBattle = data.entries.find((e) => e.current_battles.length > 0);
-    const taskId = withBattle?.current_battles[0]?.task_id ?? data.entries.find((e) => e.recent_failure)?.recent_failure?.task_id;
+    // 优先挑在打的那一场;全队都闲着时退而回看任何一场打完的
+    const taskId = data.entries.find((e) => e.current_battles.length > 0)?.current_battles[0]?.task_id
+      ?? data.entries.find((e) => e.last_battle)?.last_battle?.task_id;
     test.skip(!taskId, '此刻没有可回放的战斗');
 
     await page.goto(`/#/battles/${taskId}`);
