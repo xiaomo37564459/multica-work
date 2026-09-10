@@ -68,4 +68,48 @@ describe('UnitCard', () => {
     const { container } = render(<UnitCard entry={byName('顾检')} serverTime={serverTime} />);
     expect(container.querySelector(`[title*="重试"]`)).not.toBeNull();
   });
+
+  /**
+   * MTM-279 五场景走查捅出来的洞:卡住不等于「上一战打输了」。
+   *
+   * 实测那天主视图上苏绘、顾检两张卡写着「第 1/2 次失败,还会自动重试」——
+   * 而这两个人的上一战 status 是 **won**。真正的原因(后端算好的 state_reason)是
+   * 「名下有 1 条进行中的任务,但没有在跑的战斗」,卡上一个字都没有。
+   *
+   * 卡片当时对 stalled/defeated 一律套失败模板,不看上一战到底输没输。
+   * 编一个没发生过的失败给人看,比什么都不显示更糟 —— 会让人照着假信息去处置。
+   */
+  describe('卡住的原因得是真的', () => {
+    const stalled = (over: Partial<RosterEntry>): RosterEntry => ({
+      ...byName('顾检'),
+      state: 'stalled',
+      state_reason: '名下有 1 条进行中的任务,但没有在跑的战斗',
+      battles_loaded: true,
+      current_battles: [],
+      recent_failure: null,
+      ...over,
+    });
+
+    it('上一战是赢的:说出真实原因,不许编一句「第 1/2 次失败」', () => {
+      const won = byName('林澄').last_battle;
+      expect(won?.status).toBe('won'); // 前提没了这条测试就没意义
+      const { container } = render(<UnitCard entry={stalled({ last_battle: won })} serverTime={serverTime} />);
+      expect(container.textContent).toMatch(/名下有 1 条进行中的任务/);
+      expect(container.textContent).not.toMatch(/次失败/);
+      expect(container.textContent).not.toMatch(/重试用尽/);
+    });
+
+    it('上一战真输了:失败明细照旧画出来(带关卡、重试次数、回放)', () => {
+      const lost = byName('唐端').last_battle;
+      expect(lost?.status).toBe('lost');
+      const { container } = render(<UnitCard entry={stalled({ last_battle: lost })} serverTime={serverTime} />);
+      expect(container.querySelector('[data-battle]')).not.toBeNull();
+      expect(container.textContent).toMatch(/次失败|重试用尽/);
+    });
+
+    it('压根没有上一战:也得说句话,不许留一块空白', () => {
+      const { container } = render(<UnitCard entry={stalled({ last_battle: null })} serverTime={serverTime} />);
+      expect(container.textContent).toMatch(/名下有 1 条进行中的任务/);
+    });
+  });
 });
