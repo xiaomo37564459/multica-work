@@ -39,12 +39,16 @@ export interface CockpitApi {
 }
 
 /**
- * 数据源选择:`?source=live` 或 localStorage.cockpit_source = 'live' 走真 BFF,
- * 其余一律 mock(这一棒的默认)。
+ * 数据源选择,优先级从高到低:`?source=` → localStorage.cockpit_source → `fallback`。
+ *
+ * `fallback` 由调用方按「这个界面是谁端出来的」决定(见 App.tsx):
+ * BFF 端出来的(`npm start`,同源打 /api)默认 **live**,Vite 开发服默认 mock。
+ * 初版整个默认 mock 是因为那时界面只能单独起;现在打开指挥舱看到的必须是真状态 ——
+ * 拿假数据做真决定是这个工具最不该有的失败模式。
  */
-export function pickSource(search: string, stored: string | null): 'mock' | 'live' {
+export function pickSource(search: string, stored: string | null, fallback: 'mock' | 'live' = 'mock'): 'mock' | 'live' {
   const q = new URLSearchParams(search).get('source');
   if (q === 'live' || q === 'mock') return q;
-  if (stored === 'live') return 'live';
-  return 'mock';
+  if (stored === 'live' || stored === 'mock') return stored;
+  return fallback;
 }

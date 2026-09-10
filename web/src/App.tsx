@@ -1,8 +1,9 @@
 /**
  * 指挥舱外壳:顶栏(导航 + 数据源)+ 五屏路由 + 页脚。
  *
- * 数据源默认 mock(这一棒的交付形态);`?source=live` 切到真 BFF ——
- * /api/roster 立刻是真数据,其余接口 501 也有专门的说明态,不是报错。
+ * 数据源:BFF 端出来的界面(`npm start` → http://127.0.0.1:4780/)默认**真数据**;
+ * Vite 开发服(`cd web && npm run dev`)默认 mock,免得改个样式就打真接口。
+ * 两边都能用 `?source=mock` / `?source=live` 手动切。
  * mock 模式下顶栏多一个「演示」菜单:黄条 / 过期 / 重演加载相位,给验收走查用。
  */
 import { useMemo, useState } from 'react';
@@ -59,7 +60,12 @@ function DemoMenu(props: { api: CockpitApi; onChange: () => void }) {
 }
 
 export default function App() {
-  const source = useMemo(() => pickSource(window.location.search, localStorage.getItem('cockpit_source')), []);
+  // 构建产物 = BFF 端出来的那一份,同源就有 /api,默认吃真数据;dev server 默认 mock。
+  const fallback = import.meta.env.PROD ? 'live' : 'mock';
+  const source = useMemo(
+    () => pickSource(window.location.search, localStorage.getItem('cockpit_source'), fallback),
+    [fallback],
+  );
   const api = useMemo<CockpitApi>(() => (source === 'live' ? createLiveApi() : createMockApi()), [source]);
   const route = useRoute();
   const [demoTick, setDemoTick] = useState(0);
@@ -87,7 +93,7 @@ export default function App() {
               ◌ 演示数据
             </span>
             <DemoMenu api={api} onChange={() => setDemoTick((n) => n + 1)} />
-            <a className="pc-btn pc-btn--ghost pc-btn--sm" href={switchSourceHref('live')} title="切到本机 BFF(需要先 npm start;/api/roster 已是真数据)">
+            <a className="pc-btn pc-btn--ghost pc-btn--sm" href={switchSourceHref('live')} title="切到本机 BFF 的真数据(要先在仓库根跑 npm start)">
               ⇄ 切真数据
             </a>
           </>
