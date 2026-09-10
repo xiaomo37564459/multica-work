@@ -83,8 +83,9 @@ npm run start:api # 只起接口不带界面:零构建、零依赖,给脚本 cur
 
 两个用得上的细节:
 `node --test <目录>` 在 Node 24 上是坏的(会被当成模块去 require),要单跑某个目录得写 glob,
-例如 `node --test "pixel/tests/*.test.js"`;另外 `node --test` 不看 `.gitignore`,本地构建过前端之后
-`dist/` 里的产物也会被扫(干净克隆和 CI 没这问题,`dist/` 不进仓库)。
+例如 `node --test "pixel/tests/*.test.js"`;另外 `node --test` 不看 `.gitignore`,而 `npm start`
+现在会自动生成 `web/dist`,所以本地几乎总是有产物在。实测无害(vite 打出来的是两个 assets,
+里面没有 `*.test.js`),但往 `dist/` 里塞测试文件这条路是不通的。
 
 **web/ 和 e2e/ 是另外两个 runner 的地盘**:前端单测归 vitest,文件一律 `*.test.tsx`(哪怕没有 JSX),
 且不放进名为 `test` 的目录;e2e 冒烟归 playwright,文件一律 `*.spec.ts`。

@@ -40,6 +40,16 @@ npm run smoke
 再挑对象;挑不到就 `test.skip` 并说清为什么(例如「此刻没有人在阵地上,喊话没有落点」),
 不假装通过。所以偶尔看到 skip 是正常的,看到 fail 才是出事了。
 
+## 红了先看一眼是不是 harness 自己崩了
+
+`retries` 刻意设成 0 —— 冒烟红了就该有人去看,自动重跑会把真的偶发盖掉。
+
+代价是极少数时候会撞上 Playwright 自己的崩溃。MTM-279 收口时在干净克隆上撞到过一次
+`worker process exited unexpectedly (code=3221226505)`(Windows 的 STATUS_STACK_BUFFER_OVERRUN,
+崩的是 playwright 的 worker 进程,不是指挥舱),同一条用例接着重复跑 5 次、整套接着跑 3 次都没再现。
+**分辨方法**:报错里写的是 worker 崩了、用例耗时 0ms、没有断言失败信息 —— 那就是 harness,
+直接重跑;有断言失败信息的才是产品的问题。
+
 ## 加新场景时
 
 文件后缀必须是 **`.spec.ts`**。仓库根的 `npm test` 是裸 `node --test` 全仓库自动发现,
