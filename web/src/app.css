@@ -257,3 +257,50 @@ img.app-avatar-fallback { object-fit: cover; image-rendering: pixelated; }
   .app-campaign { flex-direction: column; }
   .app-questpanel { width: 100%; position: static; }
 }
+
+/* ============================================================
+   派活 / 喊话弹窗(MTM-278)
+   ============================================================ */
+
+.app-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--pc-bg-0) 78%, transparent);
+  padding: var(--pc-u4);
+}
+
+.app-modal__panel {
+  width: min(560px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-u3);
+}
+
+.app-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-u1);
+  font-size: var(--pc-fs-sm, 13px);
+}
+.app-modal__field > span { color: var(--pc-text-dim); }
+
+.app-modal__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pc-u3);
+}
+
+.app-modal__confirm .app-quest-rows { margin: var(--pc-u2) 0; }
+
+.app-hint { font-size: var(--pc-fs-xs, 12px); }
+
+/* 弹窗里的横幅按钮对齐 */
+.app-banner { display: flex; align-items: center; gap: var(--pc-u2); flex-wrap: wrap; }
+.app-banner .pc-btn { margin-left: auto; }
+

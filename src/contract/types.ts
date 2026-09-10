@@ -413,7 +413,13 @@ export interface CampaignMap {
   totals: {
     total: number;
     done: number;
+    /**
+     * 「失败/卡死」的判定口径(MTM-278,沈执 2026-09-09 拍板,与前端 mock 同口径):
+     * status_category=blocked 的关卡,或出击角色当前状态灯是 defeated 的 in_progress/in_review 关卡。
+     * 实现在 src/aggregate/detail.ts 的 isFailedQuest,别再猜第二遍。
+     */
     failed: number;
+    /** status_category 为 in_progress 或 in_review。 */
     in_progress: number;
   };
 }
@@ -444,6 +450,13 @@ export interface BattleChain {
 }
 
 export const CHAIN_MAX_DEPTH = 30;
+
+/**
+ * 按 issue 查战斗(MTM-278 新增,B 案 —— 不改既有类型,多一个接口):
+ *   GET /api/issues/:id/battles → Battle[](时间正序)
+ * 战役地图节点直开回放用:前端从返回列表里取最新一场开回放。
+ */
+export const ISSUE_BATTLES_PATH = '/api/issues/:id/battles';
 
 /* ────────────────────────────── 全局蓝条 / 运行时 ────────────────────────────── */
 

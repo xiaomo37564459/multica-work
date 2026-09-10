@@ -319,7 +319,7 @@ export function toRuntimeStatus(raw: string | null | undefined): RuntimeStatus {
   return 'unknown';
 }
 
-export function toMana(rows: RawRuntimeUsage[], windowDays: number): ManaStats {
+export function toMana(rows: readonly RawRuntimeUsage[], windowDays: number): ManaStats {
   const byModel = new Map<string, ManaStats['by_model'][number]>();
   let input = 0, output = 0, cacheRead = 0, cacheWrite = 0;
 
@@ -354,15 +354,15 @@ export function toMana(rows: RawRuntimeUsage[], windowDays: number): ManaStats {
   };
 }
 
-export function toHourBuckets(rows: RawRuntimeActivity[]): HourBucket[] {
+export function toHourBuckets(rows: readonly RawRuntimeActivity[]): HourBucket[] {
   const byHour = new Map(rows.map((r) => [r.hour, r.count ?? 0]));
   return Array.from({ length: 24 }, (_, hour) => ({ hour, count: byHour.get(hour) ?? 0 }));
 }
 
 export function toRuntimeVitals(
   rt: RawRuntime,
-  usage: RawRuntimeUsage[],
-  activity: RawRuntimeActivity[],
+  usage: readonly RawRuntimeUsage[],
+  activity: readonly RawRuntimeActivity[],
   windowDays: number,
 ): RuntimeVitals {
   return {

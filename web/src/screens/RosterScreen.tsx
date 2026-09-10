@@ -8,11 +8,13 @@
  *
  * 「派活」入口这一棒只留位置(disabled):写操作归下一棒 MTM-278。
  */
+import { useEffect, useState } from 'react';
 import type { CockpitApi } from '../api/api.ts';
 import { usePoll } from '../lib/usePoll.ts';
 import { ALARM_STATES, sortEntries, stateUi } from '../lib/states.ts';
 import { UnitCard } from '../components/UnitCard.tsx';
 import { StatusBanner } from '../components/StatusBanner.tsx';
+import { DispatchModal } from '../components/DispatchModal.tsx';
 import { ErrorBox } from '../components/bits.tsx';
 import type { BattleState } from '@contract';
 
@@ -21,6 +23,17 @@ const OTHER_STATES: BattleState[] = ['fighting', 'waiting', 'idle', 'offline', '
 export function RosterScreen(props: { api: CockpitApi; pollMs?: number }) {
   const { api, pollMs = 3000 } = props;
   const { data, meta, error, loading, refresh } = usePoll(() => api.roster(), pollMs, 'roster');
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [dispatched, setDispatched] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Array<{ project_id: string; title: string }>>([]);
+
+  // 打开派活弹窗时拉一次战役列表(失败静默:可选项,不阻塞派活)。
+  useEffect(() => {
+    if (!dispatchOpen || projects.length > 0) return;
+    void api.projects().then((env) => {
+      if (env.ok) setProjects(env.data.map((p) => ({ project_id: p.project_id, title: p.title })));
+    });
+  }, [dispatchOpen, projects.length, api]);
 
   if (loading) {
     return <div className="pc-empty" aria-busy="true">正在集结全队…</div>;
@@ -58,18 +71,41 @@ export function RosterScreen(props: { api: CockpitApi; pollMs?: number }) {
         <span className="app-spacer" />
         <span className="pc-dim">{data.entries.length} 人在册</span>
         <button
-          type="button"
+          type="button" data-dispatch-open
           className="pc-btn pc-btn--primary pc-btn--sm"
-          disabled
-          title="派活(真实建 issue 并指派)是写操作,归下一棒 MTM-278 —— 这里先把入口留出来"
+          disabled={api.source !== 'live'}
+          onClick={() => setDispatchOpen(true)}
+          title={api.source === 'live'
+            ? '真实创建 issue 并指派 —— 提交前有确认页'
+            : '派活是真实写操作,mock 演示数据下禁用 —— 点顶栏「切真数据」后再用'}
         >
           ⚔ 派活
         </button>
       </div>
 
+      {dispatched && (
+        <div className="app-banner app-banner--warn" role="status" data-dispatch-done>
+          ✓ 已派出:{dispatched} —— Multica 里已真实建单并开跑
+          <button type="button" className="pc-btn pc-btn--sm pc-btn--ghost" onClick={() => setDispatched(null)}>知道了</button>
+        </div>
+      )}
+
       <div className="app-grid">
         {entries.map((e) => <UnitCard key={e.agent_id} entry={e} serverTime={serverTime} />)}
       </div>
+
+      {dispatchOpen && (
+        <DispatchModal
+          entries={data.entries}
+          projects={projects}
+          dispatch={api.dispatch}
+          onClose={() => setDispatchOpen(false)}
+          onDone={(r) => {
+            setDispatchOpen(false);
+            setDispatched(r.identifier ?? r.issue_id);
+          }}
+        />
+      )}
     </section>
   );
 }

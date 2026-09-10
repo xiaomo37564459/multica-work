@@ -109,7 +109,7 @@ export default function App() {
 
       <footer className="app-foot pc-dim">
         契约 <code className="app-code">src/contract/types.ts</code> · 皮肤 <code className="app-code">pixel/</code>(主题 A 深空指挥舱)
-        · 写操作(派活/喊话)归下一棒 MTM-278,本版只留入口
+        · 派活/喊话是真实写操作,仅在「实时数据」模式开放,提交前都有确认页
       </footer>
     </div>
   );
