@@ -11,7 +11,7 @@
 浏览器(像素风页面)
     │  每 3 秒 GET /api/roster  —— 只读内存缓存,实测 p50 41~48ms
     ▼
-本机 BFF(Node,只监听 127.0.0.1)
+本机 BFF(Node,监听内网 0.0.0.0 —— heory 拍板 C 案,安全闸挡公网)
     │  分四档拉取:热 3s / 温 10s / 巡 60s / 冷 300s
     ▼
 multica CLI(execFile,不走 shell)

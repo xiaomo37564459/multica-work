@@ -24,14 +24,16 @@ multica version     # 应该能打印版本号
 npm start
 ```
 
-看到这两行就是好了:
+看到这几行就是好了:
 
 ```
-指挥舱已就绪 → http://127.0.0.1:4780/
-自检 → http://127.0.0.1:4780/api/health
+指挥舱已就绪 → http://0.0.0.0:4780/
+自检 → http://0.0.0.0:4780/api/health
+内网访问 → 用 ipconfig 查本机 IPv4 地址,同事打开 http://<内网IP>:4780/
+首次被 Windows 防火墙拦截时,放行命令见 README「内网访问(局域网同事怎么看)」一节
 ```
 
-**浏览器打开 `http://127.0.0.1:4780/`** —— 界面和接口是同一个端口,不用再单独起前端。
+**本机浏览器打开 `http://127.0.0.1:4780/`** —— 界面和接口是同一个端口,不用再单独起前端。
 顶栏应该显示「● 实时数据」,底下是全队 13 个人。
 
 第一次跑会多花十几秒装前端依赖并构建一次界面(会打印「界面还没构建过,构建一次」);
@@ -43,13 +45,32 @@ npm start
 
 想换端口:`COCKPIT_PORT=4791 npm start`。端口被占会直接告诉你被占了,不甩报错栈。
 
-> **服务只监听 127.0.0.1,而且没有改成对外监听的开关。**
-> 它握着能指挥全队的凭据,理由和全部安全规则见 `docs/security.md`。
+## 内网访问(局域网同事怎么看)
+
+服务默认监听 `0.0.0.0`(heory 2026-09-11 拍板 C 案,MTM-274 评论区):**同一局域网里的任何设备**
+(同事电脑、手机)都能打开页面看战况,也能派活、喊话。
+
+1. **查本机内网 IP**:服务所在的机器上敲 `ipconfig`,找「IPv4 地址」,形如 `192.168.x.x` / `10.x.x.x`。
+2. **内网设备访问**:浏览器打开 `http://<内网IP>:4780/`(和本机 `http://127.0.0.1:4780/` 看到的是同一个服务)。
+3. **Windows 防火墙放行**(首次会弹授权,或内网设备一直转圈打不开时执行一次即可;
+   **限定 4780 端口 + 私有网络**,不是给 Node 全开):
+
+   ```powershell
+   netsh advfirewall firewall add rule name="AetherLab Cockpit 4780" dir=in action=allow protocol=TCP localport=4780 profile=private
+   ```
+
+   删掉这条规则:`netsh advfirewall firewall delete rule name="AetherLab Cockpit 4780"`。
+
+想收回「只有本机能开」:`COCKPIT_HOST=127.0.0.1 npm start`。
+
+> **内网开放 ≠ 公网开放。** 只放行了内网 IP 段(RFC1918)+ 本机;公网 IP 和任何域名的请求照样 403。
+> **绝不暴露公网**:不许路由器端口转发、公网映射 —— 那等于让公网任何人用 heory 的身份
+> 指挥全队花真钱。理由和全部安全规则见 `docs/security.md`。
 
 ## 别的命令
 
 ```bash
-npm test          # 全仓库单测(171 条),不需要 npm install
+npm test          # 全仓库单测(190 条),不需要 npm install
 npm run typecheck # 类型检查,需要先 npm install(只装两个 devDependency)
 npm run build:web # 强制重新构建界面(平时不用,npm start 会自动判断)
 npm run start:api # 只起接口不带界面:零构建、零依赖,给脚本 curl 用
@@ -58,7 +79,7 @@ npm run start:api # 只起接口不带界面:零构建、零依赖,给脚本 cur
 **改界面**(热更新)用 `cd web && npm install && npm run dev` → `http://localhost:5173/`。
 开发服默认吃 mock 演示数据(改样式不打真接口),`?source=live` 切真数据 ——
 要走 Vite 代理打 BFF,得先 `COCKPIT_DEV_ORIGIN_PORTS=5173 npm start`。
-前端自己的 97 条测试用 vitest 跑(`cd web && npm test`),不在上面 171 条里。
+前端自己的 97 条测试用 vitest 跑(`cd web && npm test`),不在上面 190 条里。
 
 **主流程冒烟**(五个关键场景端到端):`cd e2e && npm install && npm run install-browser && npm run smoke`。
 跑法和覆盖范围见 `e2e/README.md`。
@@ -73,7 +94,7 @@ npm run start:api # 只起接口不带界面:零构建、零依赖,给脚本 cur
 这是刻意的。MTM-280 之前脚本里写死了一条只覆盖 `test/` 的 glob,`pixel/tests/` 的 27 条一条都没跑到,
 屏幕上却是「93 全绿」,**没有任何报错**。测试挂了会被看见,测试不跑不会 —— 这类故障最贵。
 
-**上面那个 171 是全仓库总数**(骨架棒 122 + MTM-278 新增 41 + MTM-279 新增 8),不是某个目录的数。
+**上面那个 190 是全仓库总数**(骨架棒 122 + MTM-278 新增 41 + MTM-279 新增 8 + MTM-306 内网开放新增/改写 19),不是某个目录的数。
 新增测试后请把这个数字改掉;数字只是给人对账用的,真正兜底的是下面这条:
 
 - **测试文件必须叫 `xxx.test.js` / `xxx.test.ts`**,或者放在名为 `test` 的目录里。
@@ -132,7 +153,9 @@ curl -X POST http://127.0.0.1:4780/api/commands/shout \
 服务自己不碰 token —— 它调 `multica` CLI,由 CLI 读自己的配置。
 
 ```bash
-COCKPIT_PORT=4780               # 端口(绑定地址恒为 127.0.0.1,不可改)
+COCKPIT_PORT=4780               # 端口
+COCKPIT_HOST=0.0.0.0            # 监听地址:默认 0.0.0.0(内网可访问,C 案);设 127.0.0.1 收回本机
+                                # 没有「更大」的选项 —— 0.0.0.0 已到头,公网暴露是红线不是配置
 COCKPIT_HOT_MS=3000             # 战况刷新间隔;觉得卡就先调这个(3000 → 5000)
 COCKPIT_WARM_MS=10000
 COCKPIT_SWEEP_MS=60000

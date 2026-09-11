@@ -8,6 +8,9 @@
 
 import { LOOPBACK_HOST } from './guard.ts';
 
+/** 默认监听全部网卡(内网可用,heory 2026-09-11 拍板 C 案,MTM-274 评论区)。 */
+export const DEFAULT_HOST = '0.0.0.0';
+
 export interface CockpitConfig {
   host: string;
   port: number;
@@ -62,8 +65,11 @@ function strEnv(name: string): string | null {
 
 export function loadConfig(): CockpitConfig {
   return {
-    // 硬编码回环地址。**不提供改成 0.0.0.0 的开关** —— 见 docs/security.md 规则 N1。
-    host: LOOPBACK_HOST,
+    // C 案(内网开放):默认听全部网卡,安全闸(guard.ts N2/N3)负责把公网/域名拒在门外。
+    // 想收回本机随时能收:COCKPIT_HOST=127.0.0.1。**不允许也不需要更大的范围** ——
+    // 0.0.0.0 已经是「物理上能听的最大面」,再往外就只能是路由器端口转发那类公网映射,
+    // 那是红线,见 docs/security.md。
+    host: process.env.COCKPIT_HOST?.trim() || DEFAULT_HOST,
     port: intEnv('COCKPIT_PORT', 4780),
     hotIntervalMs: intEnv('COCKPIT_HOT_MS', 3_000),
     warmIntervalMs: intEnv('COCKPIT_WARM_MS', 10_000),

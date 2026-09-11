@@ -7,27 +7,62 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  isAllowedHost, isAllowedOrigin, RateLimiter, validateDispatch, validateShout,
+  isAllowedHost, isAllowedOrigin, isLanHost, RateLimiter, validateDispatch, validateShout,
   WRITE_ALLOWLIST, isAllowedWrite, LIMITS,
 } from '../src/server/guard.ts';
+import { DEFAULT_HOST, loadConfig } from '../src/server/config.ts';
 import { assertSafeArg, assertUuid, MulticaCliError } from '../src/multica/source.ts';
 
 const PORT = 4780;
 const UUID = '335fc087-bd33-403c-817e-9e9d0c4dd00f';
 
-test('N2:只认本机 Host,别的域名一律拒(挡 DNS rebinding)', () => {
+test('N2:Host 必须是内网/回环 IP,公网 IP 和域名一律拒(挡 DNS rebinding)', () => {
+  // 本机三种写法
   assert.equal(isAllowedHost('127.0.0.1:4780', PORT), true);
   assert.equal(isAllowedHost('localhost:4780', PORT), true);
+  assert.equal(isAllowedHost('[::1]:4780', PORT), true);
+  // 内网三种网段(heory 拍板 C 案:内网可看可操作)
+  assert.equal(isAllowedHost('192.168.1.9:4780', PORT), true, 'C 案:内网放行');
+  assert.equal(isAllowedHost('10.0.0.5', PORT), true, '10/8,不带端口也认');
+  assert.equal(isAllowedHost('172.16.0.1:4780', PORT), true, '172.16/12');
+  // 公网 IP 一律拒 —— 内网开放不等于公网开放
+  assert.equal(isAllowedHost('8.8.8.8:4780', PORT), false, '公网 IP 拒');
+  assert.equal(isAllowedHost('172.32.0.1:4780', PORT), false, '172.32 已出 172.16/12 范围,是公网');
+  assert.equal(isAllowedHost('192.169.1.1:4780', PORT), false, '192.169 不在 192.168/16 内');
+  // 域名一律拒(哪怕它真解析到内网机器)—— 只认字面 IP
   assert.equal(isAllowedHost('evil.example.com:4780', PORT), false);
-  assert.equal(isAllowedHost('192.168.1.9:4780', PORT), false);
+  assert.equal(isAllowedHost('nas.home.arpa:4780', PORT), false);
   assert.equal(isAllowedHost(undefined, PORT), false);
   assert.equal(isAllowedHost('127.0.0.1:9999', PORT), false, '端口不对也要拒');
+  assert.equal(isAllowedHost('192.168.1.9:9999', PORT), false, '内网 IP 端口不对也拒');
 });
 
-test('N3:带了 Origin 就必须是本机,挡浏览器里的恶意页面', () => {
+test('isLanHost:RFC1918 三段 + 回环,其余全不算内网', () => {
+  for (const ok of ['localhost', '127.0.0.1', '::1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.0.1', '192.168.100.100']) {
+    assert.equal(isLanHost(ok), true, ok);
+  }
+  for (const bad of ['172.32.0.1', '172.15.0.1', '192.169.0.1', '11.0.0.1', '8.8.8.8', '0.0.0.0', '256.1.1.1', '1.2.3', 'example.com', '']) {
+    assert.equal(isLanHost(bad), false, bad);
+  }
+});
+
+test('N1:默认监听 0.0.0.0(C 案),COCKPIT_HOST 可收回本机', () => {
+  assert.equal(DEFAULT_HOST, '0.0.0.0');
+  delete process.env.COCKPIT_HOST;
+  assert.equal(loadConfig().host, '0.0.0.0', '不配就听全部网卡(内网开放)');
+  process.env.COCKPIT_HOST = '127.0.0.1';
+  assert.equal(loadConfig().host, '127.0.0.1', '想收回本机随时能收');
+  process.env.COCKPIT_HOST = '0.0.0.0';
+  assert.equal(loadConfig().host, '0.0.0.0');
+  delete process.env.COCKPIT_HOST;
+});
+
+test('N3:带了 Origin 就必须是本机或内网,挡浏览器里的恶意页面', () => {
   assert.equal(isAllowedOrigin(undefined, PORT), true, '同源请求通常不带 Origin');
   assert.equal(isAllowedOrigin('http://127.0.0.1:4780', PORT), true);
+  assert.equal(isAllowedOrigin('http://192.168.1.9:4780', PORT), true, 'C 案:内网来源放行');
   assert.equal(isAllowedOrigin('https://evil.example.com', PORT), false);
+  assert.equal(isAllowedOrigin('https://192.168.1.9', PORT), false, 'https 不是指挥舱提供的来源');
   assert.equal(isAllowedOrigin('null', PORT), false);
 });
 
@@ -45,6 +80,7 @@ test('N3:配了开发端口才放行,且只放行本机的那个端口', () => {
   assert.equal(isAllowedOrigin('https://localhost:5173', PORT, [5173]), false, 'https 也不是同一个来源');
   // 关键性质:配置项只收端口号,再怎么误用也变不出一个外部域名。
   assert.equal(isAllowedOrigin('http://evil.example.com:5173', PORT, [5173]), false);
+  assert.equal(isAllowedOrigin('http://192.168.1.9:4780', PORT, [5173]), true, '内网放行不受开发端口配置影响');
 });
 
 test('W1:写操作白名单只有两条', () => {
