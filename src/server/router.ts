@@ -195,12 +195,12 @@ export function createRouter(deps: RouterDeps): Router {
 
     const hostHeader = Array.isArray(req.headers.host) ? req.headers.host[0] : req.headers.host;
     if (!isAllowedHost(hostHeader, deps.cfg.port)) {
-      fail2(403, 'forbidden', 'Host 头不是本机地址,拒绝');
+      fail2(403, 'forbidden', 'Host 不是内网/本机地址,拒绝(内网开放不等于公网开放)');
       return out;
     }
     const origin = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
     if (!isAllowedOrigin(origin, deps.cfg.port, deps.cfg.devOriginPorts)) {
-      fail2(403, 'forbidden', 'Origin 不是本机,拒绝');
+      fail2(403, 'forbidden', 'Origin 不是内网/本机来源,拒绝');
       return out;
     }
 

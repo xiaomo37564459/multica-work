@@ -185,13 +185,22 @@ async function main(): Promise<void> {
     process.exit(1);
   });
 
-  // N1:硬绑 127.0.0.1。这一行是整个安全边界的地基,不要改成 0.0.0.0。
+  // N1:内网开放(heory 2026-09-11 拍板 C 案,MTM-274 评论区)。监听面到 0.0.0.0 为止,
+  // 公网 Host/Origin 由安全闸(N2/N3)拒之门外;禁止任何形式的公网映射(路由器端口转发等)——
+  // 那等于把「指挥全队花真钱」的权限直接放到互联网上。见 docs/security.md。
   server.listen(cfg.port, cfg.host, () => {
     void web.hasBuild().then((built) => {
       process.stdout.write(built
         ? `指挥舱已就绪 → http://${cfg.host}:${cfg.port}/\n`
         : `接口已就绪(界面没构建,先跑 npm run build:web)→ http://${cfg.host}:${cfg.port}/\n`);
       process.stdout.write(`自检 → http://${cfg.host}:${cfg.port}/api/health\n`);
+      if (cfg.host === '0.0.0.0') {
+        // 内网同事要用「本机内网 IP」访问,不能拿 0.0.0.0 当地址;顺手把查法和防火墙提示带上。
+        process.stdout.write(
+          `内网访问 → 用 ipconfig 查本机 IPv4 地址,同事打开 http://<内网IP>:${cfg.port}/\n` +
+          `首次被 Windows 防火墙拦截时,放行命令见 README「内网访问(局域网同事怎么看)」一节\n`,
+        );
+      }
     });
     // 服务已经能应答主视图了,再去补两样不影响首屏的:
     // 全员战绩(实测约 4 秒)、以及详情页/战役地图要用的冷档数据。

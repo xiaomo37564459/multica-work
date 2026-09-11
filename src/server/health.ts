@@ -27,7 +27,7 @@ export interface HealthSourceInput {
 
 export interface HealthInput {
   version: string;
-  /** 服务实际绑定的地址,形如 127.0.0.1:4780。 */
+  /** 服务实际绑定的地址,形如 0.0.0.0:4780(内网开放,默认听全部网卡)。 */
   bind: string;
   /** multica CLI 的版本;拿不到传 null。 */
   cliVersion: string | null;

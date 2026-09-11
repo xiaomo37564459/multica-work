@@ -119,6 +119,63 @@ test('N2:Host 不是本机 → 403', async () => {
   assert.equal(res.status, 403);
 });
 
+test('C 案:内网 IP 的 Host/Origin 放行 —— 读接口可用', async () => {
+  const { router } = makeHarness();
+  const lan = await router({ method: 'GET', url: '/api/roster', headers: { host: '192.168.1.9:4780', origin: 'http://192.168.1.9:4780' } });
+  assert.equal(lan.status, 200, '内网设备打开指挥舱应该能看到数据');
+  const lanNoOrigin = await router({
+    method: 'GET', url: '/api/roster', headers: { host: '10.0.0.5:4780' },
+  });
+  assert.equal(lanNoOrigin.status, 200, "浏览器同源导航不带 Origin,也得能打开");
+});
+
+test('C 案:公网 Host/Origin 仍然 403 —— 内网开放不等于公网开放(新红线)', async () => {
+  const { router } = makeHarness();
+  const pubHost = await router({ method: 'GET', url: '/api/roster', headers: { host: '8.8.8.8:4780' } });
+  assert.equal(pubHost.status, 403, '公网 IP 的 Host 拒');
+  const domHost = await router({ method: 'GET', url: '/api/roster', headers: { host: 'evil.com:4780' } });
+  assert.equal(domHost.status, 403, '域名的 Host 拒(哪怕 DNS 指到内网)');
+  const pubOrigin = await router({ method: 'GET', url: '/api/roster', headers: { host: '127.0.0.1:4780', origin: 'http://8.8.8.8:4780' } });
+  assert.equal(pubOrigin.status, 403, '公网 IP 的 Origin 拒');
+  const domOrigin = await router({
+    method: 'GET', url: '/api/roster', headers: { host: '127.0.0.1:4780', origin: 'https://evil.com' },
+  });
+  assert.equal(domOrigin.status, 403);
+});
+
+test('C 案:写操作对内网来源放行,且确认闸之后的白名单/校验/限流原样保留', async () => {
+  const h = makeHarness();
+  const lan = await h.router({
+    method: 'POST', url: '/api/commands/dispatch',
+    headers: { host: '192.168.1.9:4780', origin: 'http://192.168.1.9:4780' },
+    body: dispatchBody(),
+  });
+  assert.equal(lan.status, 200, '内网同事派活应该真实生效');
+  assert.equal(h.dispatched.length, 1);
+  const lanShout = await h.router({
+    method: 'POST', url: '/api/commands/shout',
+    headers: { host: '192.168.1.9:4780', origin: 'http://192.168.1.9:4780' },
+    body: { issue_id: UUID, content: '内网喊一条' },
+  });
+  assert.equal(lanShout.status, 200);
+  assert.equal(h.shouted.length, 1);
+  // 内网不是免检通道:坏入参照样 400
+  const bad = await h.router({
+    method: 'POST', url: '/api/commands/dispatch',
+    headers: { host: '192.168.1.9:4780', origin: 'http://192.168.1.9:4780' },
+    body: dispatchBody({ title: '-rm -rf' }),
+  });
+  assert.equal(bad.status, 400, '内网来源也一样过 W3 入参校验');
+  // 公网来源的写操作必须被安全闸拦在 W 系列之前
+  const pub = await h.router({
+    method: 'POST', url: '/api/commands/dispatch',
+    headers: { host: '8.8.8.8:4780' },
+    body: dispatchBody(),
+  });
+  assert.equal(pub.status, 403, '公网 Host 打写接口照样 403');
+  assert.equal(h.dispatched.length, 1, "被拦的那次不该落到 CLI");
+});
+
 test('N3:带外域 Origin → 403;本机 Origin 或无 Origin 放行', async () => {
   const { router } = makeHarness();
   const evil = await router({ method: 'GET', url: '/api/roster', headers: { host: '127.0.0.1:4780', origin: 'https://evil.com' } });

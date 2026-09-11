@@ -542,7 +542,7 @@ export type WriteCommand = (typeof ALLOWED_WRITE_COMMANDS)[number];
 export interface Health {
   ok: boolean;
   version: string;
-  /** 服务实际绑定的地址,永远应该是 127.0.0.1。 */
+  /** 服务实际绑定的地址,如 0.0.0.0:4780(内网开放)或 127.0.0.1:4780(收回本机)。 */
   bind: string;
   /** multica CLI 是否可用,以及版本。 */
   cli: { available: boolean; version: string | null };
