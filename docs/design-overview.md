@@ -205,6 +205,7 @@ heory 在 workspace 里养了 **13 个智能体、1 支小队（AetherLab）、�
 |---|---|
 | **第一次接触这个项目** | 就是本页 —— 为什么做、给谁做、做到哪一步 |
 | **换成我自己的智能体 / 把设计理念带走** | `docs/customize.md` |
+| **能不能商用 / 怎么贡献 / 商标能不能用** | `docs/licensing.md`（Apache-2.0 人话版）+ `LICENSE` |
 | 跑起来 / 看内网访问 / 配置项 | `README.md` |
 | 接着写后端、看模块边界 | `docs/architecture.md` + `src/contract/types.ts` |
 | 字段长什么样、为什么这么定 | `docs/data-contract.md` |

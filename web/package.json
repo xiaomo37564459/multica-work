@@ -2,6 +2,7 @@
   "name": "aetherlab-cockpit-web",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "AetherLab 指挥舱 —— 前端初版(五屏骨架,mock 数据)",
   "type": "module",
   "engines": {
