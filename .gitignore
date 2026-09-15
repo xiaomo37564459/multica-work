@@ -30,6 +30,10 @@ tmp/
 .probe/
 *.draft.md
 screenshots/
+# 但文档要引用的截图必须进仓库 —— 上面那条是拦「随手截的过程图」,
+# 这一条把 docs/screenshots/ 放回来(排除规则后出场,以最后一条为准)
+!docs/screenshots/
+!docs/screenshots/**
 
 # 编辑器 / 系统
 .DS_Store
