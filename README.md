@@ -192,6 +192,7 @@ scripts/
 ├─ start.ts            `npm start` 的入口:该构建就构建,然后起服务
 └─ build-web.ts        按 mtime 判断界面要不要重新构建
 docs/
+├─ design-overview.md  产品设计总览 —— 为什么做、给谁做、做到哪一步(新人从这份开始读)
 ├─ architecture.md     技术栈选型、模块边界、谁能碰谁
 ├─ data-contract.md    契约的人话版(为什么这么定)
 ├─ data-sources.md     每个字段对应哪条 multica 命令(全部实测)
@@ -204,6 +205,9 @@ e2e/                   五场景主流程冒烟(Playwright,自带 package.json;�
 
 ## 从哪儿开始读
 
+- **第一次接触这个项目** → `docs/design-overview.md`:要解决什么问题、三条主目标的排序、
+  游戏映射表、已经拍板的八条决策、五个验收场景、一期二期边界。
+  这份讲「为什么」,其余几份讲「怎么做」。
 - **要接着写后端** → `docs/architecture.md` 看边界,`src/contract/types.ts` 看契约,
   `docs/data-sources.md` 看每个字段从哪来(以及哪些坑已经踩过了)。
 - **要写界面** → `docs/data-contract.md`,重点看「全局约定」和几个必须画出来的状态。
