@@ -193,11 +193,13 @@ scripts/
 └─ build-web.ts        按 mtime 判断界面要不要重新构建
 docs/
 ├─ design-overview.md  产品设计总览 —— 为什么做、给谁做、做到哪一步(新人从这份开始读)
+├─ customize.md        换成我自己的智能体 / 开源共创指南
 ├─ architecture.md     技术栈选型、模块边界、谁能碰谁
 ├─ data-contract.md    契约的人话版(为什么这么定)
 ├─ data-sources.md     每个字段对应哪条 multica 命令(全部实测)
 ├─ polling.md          轮询与限流策略 + 实测数字
-└─ security.md         本地安全边界,逐条编号可 review
+├─ security.md         本地安全边界,逐条编号可 review
+└─ screenshots/        一期交付的七张真实界面截图(抓图脚本 e2e/screenshots.mjs)
 pixel/                 像素资产:立绘 + UI 皮肤(零依赖 ES 模块,自带 package.json 和 tests/)
 web/                   前端五屏(React+Vite;BFF 端出来时默认真数据,跑法见 web/README.md)
 e2e/                   五场景主流程冒烟(Playwright,自带 package.json;跑法见 e2e/README.md)
@@ -206,8 +208,10 @@ e2e/                   五场景主流程冒烟(Playwright,自带 package.json;�
 ## 从哪儿开始读
 
 - **第一次接触这个项目** → `docs/design-overview.md`:要解决什么问题、三条主目标的排序、
-  游戏映射表、已经拍板的八条决策、五个验收场景、一期二期边界。
+  游戏映射表、已经拍板的八条决策、五个验收场景(带真实截图)、一期二期边界。
   这份讲「为什么」,其余几份讲「怎么做」。
+- **想换掉默认的 13 个角色、跑自己的队伍** → `docs/customize.md`。
+  数据层自动就是你的;要补的只是像素立绘名册。
 - **要接着写后端** → `docs/architecture.md` 看边界,`src/contract/types.ts` 看契约,
   `docs/data-sources.md` 看每个字段从哪来(以及哪些坑已经踩过了)。
 - **要写界面** → `docs/data-contract.md`,重点看「全局约定」和几个必须画出来的状态。
