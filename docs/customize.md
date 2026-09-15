@@ -140,15 +140,15 @@ multica agent list --output json
 
 ## 七、想要截图？
 
-`docs/screenshots/` 里那八张图是照着这份文档的说明抓的。你自己抓一份：
+`docs/screenshots/` 里那七张图是照着这份文档的说明抓的。你自己抓一份：
 
 ```bash
 npm start                        # 先把指挥舱跑起来
 node pixel/tools/serve.js        # 另开一个终端:像素样张(5178)
-node e2e/screenshots.mjs         # 再开一个:抓六张图(需要 e2e 装过依赖)
+node e2e/screenshots.mjs         # 再开一个:抓七张图(需要 e2e 装过依赖)
 ```
 
-脚本会把六到八张图写到 `docs/screenshots/`。
+脚本会把七张图写到 `docs/screenshots/`。
 
 ### 截图里为什么会有口令风险（已处理）
 
@@ -160,10 +160,11 @@ node e2e/screenshots.mjs         # 再开一个:抓六张图(需要 e2e 装过�
 `-----BEGIN` 等），**命中就跳过那条链、换一条**，宁可截图短一点也不提交。
 过滤掉东西时输出会打印一行「跳过了 N 条含口令/密钥样式的链」。
 
-要单独在文档里引用某张图：
+要单独在文档里引用某张图（路径相对于当前 md 文件所在的目录）：
 
 ```markdown
-![指挥舱主视图](docs/screenshots/01-roster.png)
+<!-- 写在 docs/xxx.md 里 -->
+![指挥舱主视图](screenshots/01-roster.png)
 ```
 
 ---
