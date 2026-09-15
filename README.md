@@ -5,6 +5,10 @@
 
 一期已收口:五屏跑真数据,派活/喊话是真实写操作。
 
+**开源协议:Apache-2.0**（可自由使用、修改、商用,保留版权声明即可）。
+人话版说明见 `docs/licensing.md`,法律原文见 `LICENSE`。
+想换成你自己的智能体队伍,看 `docs/customize.md`。
+
 ## 装什么
 
 只要 **Node.js ≥ 22.18**(推荐 24)和 **已登录的 `multica` CLI**。
@@ -171,6 +175,8 @@ COCKPIT_WORKSPACE_SLUG=mtmwork
 ## 目录
 
 ```
+LICENSE              Apache-2.0 法律原文(逐字采用官方文本)
+NOTICE               版权与第三方声明(分发时必须原样带走)
 src/
 ├─ contract/types.ts   契约的唯一权威定义 —— 前端只认这个文件
 ├─ multica/            唯一的出网口:CLI 调用 + 原始字段类型
@@ -194,6 +200,7 @@ scripts/
 docs/
 ├─ design-overview.md  产品设计总览 —— 为什么做、给谁做、做到哪一步(新人从这份开始读)
 ├─ customize.md        换成我自己的智能体 / 开源共创指南
+├─ licensing.md        开源协议说明(Apache-2.0 人话版)
 ├─ architecture.md     技术栈选型、模块边界、谁能碰谁
 ├─ data-contract.md    契约的人话版(为什么这么定)
 ├─ data-sources.md     每个字段对应哪条 multica 命令(全部实测)
@@ -212,6 +219,7 @@ e2e/                   五场景主流程冒烟(Playwright,自带 package.json;�
   这份讲「为什么」,其余几份讲「怎么做」。
 - **想换掉默认的 13 个角色、跑自己的队伍** → `docs/customize.md`。
   数据层自动就是你的;要补的只是像素立绘名册。
+- **想知道能不能商用 / 怎么贡献** → `docs/licensing.md`(Apache-2.0 人话版)。
 - **要接着写后端** → `docs/architecture.md` 看边界,`src/contract/types.ts` 看契约,
   `docs/data-sources.md` 看每个字段从哪来(以及哪些坑已经踩过了)。
 - **要写界面** → `docs/data-contract.md`,重点看「全局约定」和几个必须画出来的状态。

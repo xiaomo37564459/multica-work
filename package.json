@@ -2,6 +2,7 @@
   "name": "aetherlab-cockpit",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "AetherLab 指挥舱 —— 本机运行的智能体工作中心(BFF 骨架)",
   "type": "module",
   "engines": {
